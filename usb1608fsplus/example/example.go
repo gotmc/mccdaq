@@ -6,6 +6,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/gotmc/libusb"
@@ -27,9 +28,34 @@ func main() {
 	if err != nil {
 		log.Printf("Error claiming interface %s", err)
 	}
-	// usb1608fsplus.Reset(dh)
-	usb1608fsplus.BlinkLED(dh, 3)
 
+	// Test blinking the LED
+	blinks := 2
+	count, err := usb1608fsplus.BlinkLED(dh, blinks)
+	if err != nil {
+		fmt.Errorf("Error blinking LED %s", err)
+	}
+	log.Printf("Sent %d data to blink LED %d times.", count, blinks)
+
+	// Get status
+	status, err := usb1608fsplus.Status(dh)
+	log.Printf("Status = %v", status)
+
+	// Get serial number via control transfer
+	serialNumber, err := usb1608fsplus.SerialNumber(dh)
+	log.Printf("Serial number via control transfer = %s", serialNumber)
+	desc, _ := dev.GetDeviceDescriptor()
+	sn, _ := dh.GetStringDescriptorASCII(desc.SerialNumberIndex)
+	log.Printf("Serial number via libusb device descriptor = %s\n", sn)
+	log.Printf("Vendor ID via libusb device descriptor = 0x%x\n", desc.VendorID)
+	log.Printf("Product ID via libusb device descriptor = 0x%x\n", desc.ProductID)
+
+	// Read the calibration memory to setup the gain table
+	gainTable, _ := usb1608fsplus.BuildGainTable(dh)
+	log.Printf("Slope = %v\n", gainTable.Slope)
+	log.Printf("Intercept = %v\n", gainTable.Intercept)
+
+	// Release the interface and close up shop
 	err = dh.ReleaseInterface(0)
 	if err != nil {
 		log.Printf("Error releasing interface %s", err)
