@@ -1,3 +1,8 @@
+// Copyright (c) 2016 The mccdaq developers. All rights reserved.
+// Project site: https://github.com/gotmc/mccdaq
+// Use of this source code is governed by a MIT-style license that
+// can be found in the LICENSE.txt file for the project.
+
 package usb1608fsplus
 
 import (
@@ -44,14 +49,14 @@ func Reset(dh *libusb.DeviceHandle) (int, error) {
 
 // Status retrieves the status of the device and clears the error
 // indicators.
-func Status(dh *libusb.DeviceHandle) (uint, error) {
+func Status(dh *libusb.DeviceHandle) (byte, error) {
 	requestType := libusb.BitmapRequestType(
 		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
 	data := make([]byte, 2)
 	dh.ControlTransfer(
 		requestType, byte(commandGetStatus), 0x0, 0x0, data, len(data), timeout)
 	status := binary.LittleEndian.Uint16(data)
-	return uint(status), nil
+	return byte(status), nil
 }
 
 // SerialNumber retrieves the serial number via a control transfer using the

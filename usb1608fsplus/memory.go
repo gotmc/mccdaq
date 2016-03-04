@@ -1,9 +1,13 @@
+// Copyright (c) 2016 The mccdaq developers. All rights reserved.
+// Project site: https://github.com/gotmc/mccdaq
+// Use of this source code is governed by a MIT-style license that
+// can be found in the LICENSE.txt file for the project.
+
 package usb1608fsplus
 
 import (
 	"encoding/binary"
 	"fmt"
-	"log"
 	"math"
 
 	"github.com/gotmc/libusb"
@@ -30,10 +34,8 @@ func BuildGainTable(dh *libusb.DeviceHandle) (GainTable, error) {
 		for j := 0; j < maxNumADChannels; j++ {
 			data, _ = ReadCalMemory(dh, address, bytesToRead)
 			slope[i][j] = convertBytesToFloat32(data)
-			log.Printf("Gain %d / Channel %d / Slope = %.3f %x", i, j, slope[i][j], data)
 			address += 4
 			data, _ = ReadCalMemory(dh, address, bytesToRead)
-			log.Printf("Gain %d / Channel %d / Intercept = %.3f %v", i, j, intercept[i][j], data)
 			intercept[i][j] = convertBytesToFloat32(data)
 			address += 4
 		}
@@ -60,7 +62,6 @@ func BuildGainTable(dh *libusb.DeviceHandle) (GainTable, error) {
     0x300 to lock the memory after writing.
 */
 func ReadCalMemory(dh *libusb.DeviceHandle, address int, count int) ([]byte, error) {
-	fmt.Printf("Reading cal memory address %d / count %d\n", address, count)
 	data := make([]byte, count)
 	requestType := libusb.BitmapRequestType(
 		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)

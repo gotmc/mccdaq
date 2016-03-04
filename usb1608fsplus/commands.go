@@ -1,3 +1,8 @@
+// Copyright (c) 2016 The mccdaq developers. All rights reserved.
+// Project site: https://github.com/gotmc/mccdaq
+// Use of this source code is governed by a MIT-style license that
+// can be found in the LICENSE.txt file for the project.
+
 package usb1608fsplus
 
 const timeout = 2000
@@ -88,7 +93,7 @@ const (
 
 const (
 	lastChannel               byte = 0x80
-	maxBulkTransferPacketSize byte = 64
+	maxBulkTransferPacketSize      = 64
 )
 
 type voltageRange byte
