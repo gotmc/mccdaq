@@ -50,7 +50,7 @@ func ReadAnalogInput(dh *libusb.DeviceHandle, channel int, rng voltageRange) (ui
 /*
    If pacer_period is set to 0, the device does not generate an A/D
    clock.  It uses the SYNC pin as an input and the user must
-   provide the pacer sourece.  The A/Ds acquire data on every rising
+   provide the pacer source.  The A/Ds acquire data on every rising
    edge of SYNC; the maximum allowable input frequency is 100 kHz.
 
    The data will be returned in packets untilizing a bulk endpoint.
@@ -86,7 +86,7 @@ func ReadAnalogInput(dh *libusb.DeviceHandle, channel int, rng voltageRange) (ui
    clear the stall condition before further scan can be performed.
 */
 func StartAnalogScan(
-	dh *libusb.DeviceHandle, numScans int, frequency float32, channels byte, options byte,
+	dh *libusb.DeviceHandle, numScans int, frequency float64, channels byte, options byte,
 ) error {
 	requestType := libusb.BitmapRequestType(
 		libusb.HostToDevice, libusb.Vendor, libusb.DeviceRecipient)
@@ -105,11 +105,12 @@ func StartAnalogScan(
 	_, err = dh.ControlTransfer(
 		requestType, byte(commandAnalogStartScan), 0x0, 0x0, data, len(data), timeout)
 	if err != nil {
-		return fmt.Errorf("Error reading analog input %s", err)
+		return fmt.Errorf("Error starting analog input scan %s", err)
 	}
 	return nil
 }
 
+// ReadScan reads the data from an analog scan
 func ReadScan(
 	dh *libusb.DeviceHandle, ep *libusb.EndpointDescriptor, numScans int, numChannels int, options byte,
 ) ([]byte, error) {
@@ -119,42 +120,50 @@ func ReadScan(
 	var data = make([]byte, bytesToRead)
 
 	if options&byte(scanImmediateTransferMode) > 0 {
+		// Immediate transfer mode scan
 		for i := 0; i < wordsToRead; i++ {
-			_, bytesReceived, err := dh.BulkTransferIn(
+			var word = make([]byte, bytesInWord)
+			bytesReceived, err := dh.BulkTransfer(
 				ep.EndpointAddress,
+				word,
 				bytesInWord,
 				timeout,
 			)
-			if bytesReceived != 2 {
-				return data, fmt.Errorf("Didn't transfer 2 bytes %s", err)
-			}
 			if err != nil {
 				return data, fmt.Errorf("Problem with immediate scan %s", err)
 			}
+			if bytesReceived != bytesInWord {
+				return data, fmt.Errorf("Didn't transfer 2 bytes %s", err)
+			}
+			data[i] = word[0]
+			data[i+1] = word[1]
 		}
 	} else {
-		_, bytesReceived, err := dh.BulkTransferIn(
+		bytesReceived, err := dh.BulkTransfer(
 			ep.EndpointAddress,
+			data,
 			bytesToRead,
 			timeout,
 		)
-		if bytesReceived != bytesToRead {
-			return data, fmt.Errorf("Didn't transfer %d bytes %s", bytesToRead, err)
-		}
 		if err != nil {
 			return data, fmt.Errorf("Problem with bulk scan %s", err)
 		}
+		if bytesReceived != bytesToRead {
+			return data, fmt.Errorf("Didn't transfer %d bytes %s", bytesToRead, err)
+		}
 	}
-	status, _ := Status(dh)
+	status, err := Status(dh)
+	if err != nil {
+		fmt.Errorf("Error getting status during analog bulk read %s", err)
+	}
 	// If bytesToRead is a multiple of wMaxPacketSize the device will send a zero
 	// byte packet.
 	if (bytesToRead%maxBulkTransferPacketSize) == 0 && (status&byte(scanRunning) == 0) {
 		_, _, _ = dh.BulkTransferIn(
 			ep.EndpointAddress,
 			bytesInWord,
-			timeout,
+			100,
 		)
-
 	}
 	if status&byte(scanOverrun) != 0 {
 		log.Printf("Analog AIn scan overrun.\n")
@@ -197,30 +206,34 @@ func ConfigAnalogScan(dh *libusb.DeviceHandle, ranges []byte) error {
 	_, err := dh.ControlTransfer(
 		requestType, byte(commandAnalogConfig), 0x0, 0x0, ranges, 8, timeout)
 	if err != nil {
-		return fmt.Errorf("Error reading/writing Ain config %s", err)
+		return fmt.Errorf("Error writing Ain config %s", err)
 	}
 	return nil
 }
 
-func packScanData(numScans int, frequency float32, channels byte, options byte) []byte {
-	// FIXME(mdr): I should probably use binary.Write() (see Example (Multi))
+func ReadScanRanges(dh *libusb.DeviceHandle) ([]byte, error) {
+	var ranges = make([]byte, 8)
+	requestType := libusb.BitmapRequestType(
+		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
+	_, err := dh.ControlTransfer(
+		requestType, byte(commandAnalogConfig), 0x0, 0x0, ranges, 8, timeout)
+	if err != nil {
+		return ranges, fmt.Errorf("Error reading Ain config %s", err)
+	}
+	return ranges, nil
+}
+
+func packScanData(numScans int, frequency float64, channels byte, options byte) []byte {
+	// FIXME(mdr): I should probably use binary.Write() instead of using the
+	// brute force method. <https://golang.org/pkg/encoding/binary/#example_Write_multi>
 
 	// Convert numScans from int to []byte
 	binaryNumScans := make([]byte, 4)
 	binary.LittleEndian.PutUint32(binaryNumScans, uint32(numScans))
 
-	// Calculate pacerPeriod using frequency and then convert float32 to []byte
-	var pacerPeriod float32
-	if frequency > maxFrequency {
-		frequency = maxFrequency
-	}
-	if frequency > 0 {
-		pacerPeriod = round((40e6 / frequency) - 1)
-	} else {
-		pacerPeriod = 0
-	}
+	pacerPeriod := calculatePacerPeriod(frequency)
 	binaryPacerPeriod := make([]byte, 4)
-	binary.LittleEndian.PutUint32(binaryPacerPeriod, math.Float32bits(pacerPeriod))
+	binary.LittleEndian.PutUint32(binaryPacerPeriod, uint32(pacerPeriod))
 
 	return []byte{
 		binaryNumScans[0],
@@ -236,11 +249,20 @@ func packScanData(numScans int, frequency float32, channels byte, options byte) 
 	}
 }
 
-func round(f float32) float32 {
+func calculatePacerPeriod(frequency float64) int {
+	if frequency > maxFrequency {
+		frequency = maxFrequency
+	}
+	if frequency > 0 {
+		return round((40e6 / float32(frequency)) - 1)
+	}
+	return 0
+}
+
+func round(f float32) int {
 	fAsFloat64 := float64(f)
 	if math.Abs(fAsFloat64) < 0.5 {
 		return 0
 	}
-	temp := int(fAsFloat64 + math.Copysign(0.5, fAsFloat64))
-	return float32(temp)
+	return int(fAsFloat64 + math.Copysign(0.5, fAsFloat64))
 }

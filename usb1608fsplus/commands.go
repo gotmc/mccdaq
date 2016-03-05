@@ -71,7 +71,7 @@ const (
 	scanBlockTransferMode     scanOption = 0x0
 	scanImmediateTransferMode scanOption = 0x1
 	scanInternalPacerOff      scanOption = 0x0
-	scanInternalPcerOn        scanOption = 0x2
+	scanInternalPacerOn       scanOption = 0x2
 	scanNoTrigger             scanOption = 0x0
 	scanTriggerRisingEdge     scanOption = 0x1 << 2
 	scanTriggerFallingEdge    scanOption = 0x2 << 2

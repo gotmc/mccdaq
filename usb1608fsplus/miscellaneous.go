@@ -8,6 +8,7 @@ package usb1608fsplus
 import (
 	"encoding/binary"
 	"fmt"
+	"log"
 
 	"github.com/gotmc/libusb"
 )
@@ -37,6 +38,7 @@ func BlinkLED(dh *libusb.DeviceHandle, count int) (int, error) {
 
 // Reset resets the device.
 func Reset(dh *libusb.DeviceHandle) (int, error) {
+	log.Printf("Resetting device\n")
 	requestType := libusb.BitmapRequestType(
 		libusb.HostToDevice, libusb.Vendor, libusb.DeviceRecipient)
 	ret, err := dh.ControlTransfer(

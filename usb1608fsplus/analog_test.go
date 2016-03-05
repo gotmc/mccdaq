@@ -15,15 +15,14 @@ import (
 func TestPackScanData(t *testing.T) {
 	testCases := []struct {
 		numScans  int
-		frequency float32
+		frequency float64
 		channels  byte
 		options   byte
 		packet    []byte
 	}{
-		{1, 0.00, 0x00, 0x00, []byte{01, 00, 00, 00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
-		{1, 1.00, 0x00, 0x00, []byte{01, 00, 00, 00, 0x80, 0x96, 0x18, 0x4c, 0x00, 0x00}},
-		{100, 10.0e6, 0xff, 0xff, []byte{100, 00, 00, 00, 0x00, 0x00, 0x9e, 0x42, 0xff, 0xff}},
-		{512, 20.0e3, 0xaa, 0xbb, []byte{00, 02, 00, 00, 0x00, 0xe0, 0xf9, 0x44, 0xaa, 0xbb}},
+		{1, 0.00, 0x00, 0x00, []byte{1, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{1, 10000.0, 0x01, 0x00, []byte{01, 0, 00, 00, 159, 15, 00, 00, 1, 0}},
+		{256, 50000.0, 0xff, 0xff, []byte{0, 1, 0, 0, 31, 3, 0, 0, 255, 255}},
 	}
 	c.Convey("Given the need to create the scan data packet", t, func() {
 		for _, testCase := range testCases {
@@ -59,13 +58,36 @@ func TestPackScanData(t *testing.T) {
 	})
 }
 
+func TestCalculatingPacerPeriod(t *testing.T) {
+	testCases := []struct {
+		frequency   float64
+		pacerPeriod int
+	}{
+		{10000.0, 3999},
+		{50000.0, 799},
+	}
+	c.Convey("Given the need to calculate the pacer period", t, func() {
+		for _, testCase := range testCases {
+			conveyance := fmt.Sprintf("When the frequency is %f Hz", testCase.frequency)
+			c.Convey(conveyance, func() {
+				conveyance := fmt.Sprintf("Then the pacer period should be %d", testCase.pacerPeriod)
+				c.Convey(conveyance, func() {
+					c.So(calculatePacerPeriod(testCase.frequency), c.ShouldEqual, testCase.pacerPeriod)
+				})
+			})
+		}
+	})
+}
+
 func TestRound(t *testing.T) {
 	testCases := []struct {
 		preRound      float32
-		expectedValue float32
+		expectedValue int
 	}{
-		{1.2, 1.0},
-		{500000.4, 500000.0},
+		{1.2, 1},
+		{799.00, 799},
+		{799.90, 800},
+		{500000.4, 500000},
 	}
 	c.Convey("Given the need to round float32 numbers", t, func() {
 		for _, testCase := range testCases {
