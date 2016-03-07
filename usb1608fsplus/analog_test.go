@@ -82,7 +82,7 @@ func TestCalculatingPacerPeriod(t *testing.T) {
 
 func TestRound(t *testing.T) {
 	testCases := []struct {
-		preRound      float32
+		preRound      float64
 		expectedValue int
 	}{
 		{0.499, 0},
@@ -92,7 +92,7 @@ func TestRound(t *testing.T) {
 		{799.90, 800},
 		{500000.4, 500000},
 	}
-	c.Convey("Given the need to round float32 numbers", t, func() {
+	c.Convey("Given the need to round float64 numbers", t, func() {
 		for _, testCase := range testCases {
 			conveyance := fmt.Sprintf("When %f is provided to the round() function", testCase.preRound)
 			c.Convey(conveyance, func() {

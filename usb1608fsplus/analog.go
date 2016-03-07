@@ -254,15 +254,14 @@ func calculatePacerPeriod(frequency float64) int {
 		frequency = maxFrequency
 	}
 	if frequency > 0 {
-		return round((40e6 / float32(frequency)) - 1)
+		return round((40e6 / frequency) - 1)
 	}
 	return 0
 }
 
-func round(f float32) int {
-	fAsFloat64 := float64(f)
-	if math.Abs(fAsFloat64) < 0.5 {
+func round(f float64) int {
+	if math.Abs(f) < 0.5 {
 		return 0
 	}
-	return int(fAsFloat64 + math.Copysign(0.5, fAsFloat64))
+	return int(f + math.Copysign(0.5, f))
 }

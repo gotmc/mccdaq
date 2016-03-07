@@ -14,8 +14,8 @@ import (
 )
 
 type GainTable struct {
-	Slope     [][]float32
-	Intercept [][]float32
+	Slope     [][]float64
+	Intercept [][]float64
 }
 
 // BuildGainTable creates a multidimensional slice to store the slope
@@ -23,21 +23,24 @@ type GainTable struct {
 // are stored in onboard FLASH memory on the device in IEEE-754 4-byte floating
 // point values.
 func BuildGainTable(dh *libusb.DeviceHandle) (GainTable, error) {
+	// TODO(mdr): Why are we reading only 4 bytes at a time in a loop? Why not
+	// read all calibration memory at once and then decode the data as needed to
+	// create the calibraiton gain table.
 	var data []byte
 	address := 0
-	bytesToRead := 4
-	slope := make([][]float32, maxNumGainLevels)
-	intercept := make([][]float32, maxNumGainLevels)
+	bytesPerValue := 4
+	slope := make([][]float64, maxNumGainLevels)
+	intercept := make([][]float64, maxNumGainLevels)
 	for i := 0; i < maxNumGainLevels; i++ {
-		slope[i] = make([]float32, maxNumADChannels)
-		intercept[i] = make([]float32, maxNumADChannels)
+		slope[i] = make([]float64, maxNumADChannels)
+		intercept[i] = make([]float64, maxNumADChannels)
 		for j := 0; j < maxNumADChannels; j++ {
-			data, _ = ReadCalMemory(dh, address, bytesToRead)
-			slope[i][j] = convertBytesToFloat32(data)
-			address += 4
-			data, _ = ReadCalMemory(dh, address, bytesToRead)
-			intercept[i][j] = convertBytesToFloat32(data)
-			address += 4
+			data, _ = ReadCalMemory(dh, address, bytesPerValue)
+			slope[i][j] = float64(convertBytesToFloat32(data))
+			address += bytesPerValue
+			data, _ = ReadCalMemory(dh, address, bytesPerValue)
+			intercept[i][j] = float64(convertBytesToFloat32(data))
+			address += bytesPerValue
 		}
 	}
 	gainTable := GainTable{
