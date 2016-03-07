@@ -7,6 +7,10 @@ Go library to communicate with Measurement Computing Corporation (MCC)
 USB DAQs. Based on [Dr. Warren J. Jasper][jasper]'s [MCC DAQ C-based
 drivers][mcc-linux]. Many thanks to Dr. Jasper for his work.
 
+**WARNING:** This code is in active development and should not be
+considered a stable API. Currently, it is not idomatic GO code, but I
+hope to change that in the near future.
+
 ## Supported MCC Devices
 
 Below is a list of supported MCC devices. If you want to add a device,

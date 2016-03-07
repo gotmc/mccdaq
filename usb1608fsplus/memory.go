@@ -67,13 +67,14 @@ func BuildGainTable(dh *libusb.DeviceHandle) (GainTable, error) {
 func ReadCalMemory(dh *libusb.DeviceHandle, address int, count int) ([]byte, error) {
 	data := make([]byte, count)
 	requestType := libusb.BitmapRequestType(
-		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
-	if count > 768 {
-		return nil, fmt.Errorf("Max bytes is 768")
+		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient,
+	)
+
+	if !validCalMemoryRange(address, count) {
+		return nil, fmt.Errorf(
+			"Tyring to access outside calibration memory range 0x0000 to 0x02FF")
 	}
-	if address > 0x2ff {
-		return nil, fmt.Errorf("Address must be in the range 0x0000 to 0x02FF")
-	}
+
 	dh.ControlTransfer(
 		requestType, byte(commandCalibrationMemory), uint16(address), 0x0, data, count, timeout)
 	return data, nil
@@ -81,4 +82,17 @@ func ReadCalMemory(dh *libusb.DeviceHandle, address int, count int) ([]byte, err
 
 func convertBytesToFloat32(data []byte) float32 {
 	return math.Float32frombits(binary.LittleEndian.Uint32(data))
+}
+
+func validCalMemoryRange(address, count int) bool {
+	numCalMemoryBytes := 768
+	maxCalMemoryLocation := 0x02ff // 768 bytes from 0x0000 to 0x02ff
+	// Must read at least 1 byte and no more than 768 bytes
+	if count <= 0 || count > numCalMemoryBytes {
+		return false
+	}
+	if address < 0 || maxCalMemoryLocation < address+count-1 {
+		return false
+	}
+	return true
 }
