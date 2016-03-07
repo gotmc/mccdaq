@@ -54,3 +54,27 @@ func TestValidCalMemoryRange(t *testing.T) {
 		}
 	})
 }
+
+func TestConvertBytesToFloat(t *testing.T) {
+	testCases := []struct {
+		data   []byte
+		output float32
+	}{
+		{[]byte{00, 00, 00, 00}, 0.0},
+		{[]byte{00, 00, 0x80, 0x3f}, 1.0},
+		{[]byte{0x4f, 0xd2, 0x93, 0x3f}, 1.1548556},
+	}
+	c.Convey("Given the need to convert IEEE 754 4-byte numbers", t, func() {
+		for _, testCase := range testCases {
+			conveyance := fmt.Sprintf("When given the 4 bytes: %x", testCase.data)
+			c.Convey(conveyance, func() {
+				conveyance := fmt.Sprintf("Then the value should be %f", testCase.output)
+				c.Convey(conveyance, func() {
+					given := testCase.output
+					calculated := convertBytesToFloat32(testCase.data)
+					c.So(calculated, c.ShouldAlmostEqual, given)
+				})
+			})
+		}
+	})
+}
