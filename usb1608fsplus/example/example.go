@@ -88,13 +88,13 @@ func main() {
 	log.Printf("Intercept = %v\n", gainTable.Intercept)
 
 	// Read one analog reading.
-	usb1608fsplus.StopAnalogScan(dh)
-	time.Sleep(time.Second)
-	foo, err := usb1608fsplus.ReadAnalogInput(dh, 1, 0)
-	if err != nil {
-		log.Fatalf("Error reading one analog input. %s", err)
-	}
-	log.Printf("Read analog input %d", foo)
+	// usb1608fsplus.StopAnalogScan(dh)
+	// time.Sleep(time.Second)
+	// foo, err := usb1608fsplus.ReadAnalogInput(dh, 1, 0)
+	// if err != nil {
+	// log.Fatalf("Error reading one analog input. %s", err)
+	// }
+	// log.Printf("Read analog input %d", foo)
 
 	/**************************
 	* Start the Analog Scan   *
@@ -126,8 +126,9 @@ func main() {
 	time.Sleep(1 * time.Second)
 	data, err := usb1608fsplus.ReadScan(dh, ep, count, numChannels, options)
 	for i := 0; i < 16; i++ {
-		fmt.Printf("data[%d] = %d\n", i, data[i])
+		log.Printf("data[%d] = %d\n", i, data[i])
 	}
+	log.Printf("data is %d bytes\n", len(data))
 	usb1608fsplus.StopAnalogScan(dh)
 	time.Sleep(1 * time.Second)
 

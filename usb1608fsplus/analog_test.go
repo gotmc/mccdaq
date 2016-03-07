@@ -63,6 +63,7 @@ func TestCalculatingPacerPeriod(t *testing.T) {
 		frequency   float64
 		pacerPeriod int
 	}{
+		{40e6, 79},
 		{10000.0, 3999},
 		{50000.0, 799},
 	}
@@ -84,6 +85,8 @@ func TestRound(t *testing.T) {
 		preRound      float32
 		expectedValue int
 	}{
+		{0.499, 0},
+		{0.4, 0},
 		{1.2, 1},
 		{799.00, 799},
 		{799.90, 800},
