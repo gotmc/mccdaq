@@ -8,7 +8,6 @@ package usb1608fsplus
 import (
 	"encoding/binary"
 	"fmt"
-	"log"
 
 	"github.com/gotmc/libusb"
 )
@@ -21,14 +20,14 @@ func byteSlice(i int) []byte {
 
 // BlinkLED blinks the LED the given number of times. Note, the LED starts
 // being unlit, but will end being lit.
-func BlinkLED(dh *libusb.DeviceHandle, count int) (int, error) {
+func (daq *USB1608FSPlus) BlinkLED(count int) (int, error) {
 	requestType := libusb.BitmapRequestType(
 		libusb.HostToDevice, libusb.Vendor, libusb.DeviceRecipient)
 	// data := byteSlice(count)
 	data := make([]byte, 1)
 	data[0] = byte(count)
 
-	ret, err := dh.ControlTransfer(
+	ret, err := daq.DeviceHandle.ControlTransfer(
 		requestType, byte(commandBlinkLED), 0x0, 0x0, data, len(data), timeout)
 	if err != nil {
 		return ret, fmt.Errorf("Error blinking LED %s", err)
@@ -36,26 +35,13 @@ func BlinkLED(dh *libusb.DeviceHandle, count int) (int, error) {
 	return ret, nil
 }
 
-// Reset resets the device.
-func Reset(dh *libusb.DeviceHandle) (int, error) {
-	log.Printf("Resetting device\n")
-	requestType := libusb.BitmapRequestType(
-		libusb.HostToDevice, libusb.Vendor, libusb.DeviceRecipient)
-	ret, err := dh.ControlTransfer(
-		requestType, byte(commandReset), 0x0, 0x0, []byte{0x00}, 1, timeout)
-	if err != nil {
-		return ret, fmt.Errorf("Error resetting devices %s", err)
-	}
-	return ret, nil
-}
-
 // Status retrieves the status of the device and clears the error
 // indicators.
-func Status(dh *libusb.DeviceHandle) (byte, error) {
+func (daq *USB1608FSPlus) Status() (byte, error) {
 	requestType := libusb.BitmapRequestType(
 		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
 	data := make([]byte, 2)
-	dh.ControlTransfer(
+	daq.DeviceHandle.ControlTransfer(
 		requestType, byte(commandGetStatus), 0x0, 0x0, data, len(data), timeout)
 	status := binary.LittleEndian.Uint16(data)
 	return byte(status), nil
@@ -63,11 +49,11 @@ func Status(dh *libusb.DeviceHandle) (byte, error) {
 
 // SerialNumber retrieves the serial number via a control transfer using the
 // serial command (0x48) as opposed to using the libusb serial number.
-func SerialNumber(dh *libusb.DeviceHandle) (string, error) {
+func (daq *USB1608FSPlus) SerialNumber() (string, error) {
 	requestType := libusb.BitmapRequestType(
 		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
 	data := make([]byte, 8)
-	dh.ControlTransfer(
+	daq.DeviceHandle.ControlTransfer(
 		requestType, byte(commandSerialNum), 0x0, 0x0, data, len(data), timeout)
 	return string(data), nil
 }

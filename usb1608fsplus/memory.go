@@ -26,7 +26,7 @@ type GainTable struct {
 // and intercept for each range on each channel. The calibration coefficients
 // are stored in onboard FLASH memory on the device in IEEE-754 4-byte floating
 // point values.
-func BuildGainTable(dh *libusb.DeviceHandle) (GainTable, error) {
+func (daq *USB1608FSPlus) BuildGainTable() (GainTable, error) {
 	// TODO(mdr): Why are we reading only 4 bytes at a time in a loop? Why not
 	// read all calibration memory at once and then decode the data as needed to
 	// create the calibraiton gain table.
@@ -39,10 +39,10 @@ func BuildGainTable(dh *libusb.DeviceHandle) (GainTable, error) {
 		slope[i] = make([]float64, maxNumADChannels)
 		intercept[i] = make([]float64, maxNumADChannels)
 		for j := 0; j < maxNumADChannels; j++ {
-			data, _ = ReadCalMemory(dh, address, bytesPerValue)
+			data, _ = daq.ReadCalMemory(address, bytesPerValue)
 			slope[i][j] = float64(convertBytesToFloat32(data))
 			address += bytesPerValue
-			data, _ = ReadCalMemory(dh, address, bytesPerValue)
+			data, _ = daq.ReadCalMemory(address, bytesPerValue)
 			intercept[i][j] = float64(convertBytesToFloat32(data))
 			address += bytesPerValue
 		}
@@ -68,7 +68,7 @@ func BuildGainTable(dh *libusb.DeviceHandle) (GainTable, error) {
     memory range is then possible.  Write any other value to address
     0x300 to lock the memory after writing.
 */
-func ReadCalMemory(dh *libusb.DeviceHandle, address int, count int) ([]byte, error) {
+func (daq *USB1608FSPlus) ReadCalMemory(address int, count int) ([]byte, error) {
 	data := make([]byte, count)
 	requestType := libusb.BitmapRequestType(
 		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient,
@@ -79,7 +79,7 @@ func ReadCalMemory(dh *libusb.DeviceHandle, address int, count int) ([]byte, err
 			"Tyring to access outside calibration memory range 0x0000 to 0x02FF")
 	}
 
-	dh.ControlTransfer(
+	daq.DeviceHandle.ControlTransfer(
 		requestType, byte(commandCalibrationMemory), uint16(address), 0x0, data, count, timeout)
 	return data, nil
 }
