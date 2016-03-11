@@ -7,7 +7,6 @@ package usb1608fsplus
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/gotmc/libusb"
@@ -57,7 +56,6 @@ func GetFromSN(ctx *libusb.Context, sn string) (*USB1608FSPlus, error) {
 			if err != nil {
 				return &daq, fmt.Errorf("Error reading S/N: %s", err)
 			}
-			serialNum = strings.TrimRight(serialNum, "\000")
 			if serialNum == sn {
 				return create(usbDevice, usbDeviceHandle)
 			}
