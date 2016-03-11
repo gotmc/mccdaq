@@ -36,7 +36,7 @@ $ go get github.com/gotmc/mccdaq
 Documentation can be found at either:
 
 - <https://godoc.org/github.com/gotmc/libusb>
-- <http://localhost:6060/pkg/github.com/gotmc/libusb/> after running `$
+- <http://localhost:6060/pkg/github.com/gotmc/mccdaq/> after running `$
   godoc -http=:6060`
 
 ## Contributing
