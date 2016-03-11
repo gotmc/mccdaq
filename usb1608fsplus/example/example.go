@@ -22,7 +22,13 @@ func main() {
 	defer ctx.Exit()
 
 	// Create the USB-1608FS-Plus DAQ device
-	daq, err := usb1608fsplus.Create(ctx)
+	daq, err := usb1608fsplus.GetFromSN(ctx, "01ACD31D")
+	if err != nil {
+		log.Fatalf("Something bad getting S/N happened: %s", err)
+	}
+	// If you just want to grab the first USB-1608FS-Plus that's attached, you
+	// can use:
+	// daq, err := usb1608fsplus.GetFirstDevice(ctx)
 
 	// Print some info about the device
 	log.Printf("Vendor ID = 0x%x / Product ID = 0x%x\n", daq.DeviceDescriptor.VendorID,
@@ -88,8 +94,11 @@ func main() {
 	daq.StartAnalogScan(count, frequency, channels, options)
 	time.Sleep(1 * time.Second)
 	data, err := daq.ReadScan(count, numChannels, options)
-	for i := 0; i < 16; i++ {
-		log.Printf("data[%d] = %d\n", i, data[i])
+	for i := 0; i < 8; i += 2 {
+		log.Printf("data[%d:%d] = %d %d\n", i, i+1, data[i+1], data[i])
+	}
+	for i := count - 8; i < count; i += 2 {
+		log.Printf("data[%d:%d] = %d %d\n", i, i+1, data[i+1], data[i])
 	}
 	log.Printf("data is %d bytes\n", len(data))
 	daq.StopAnalogScan()
