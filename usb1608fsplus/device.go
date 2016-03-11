@@ -7,6 +7,7 @@ package usb1608fsplus
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gotmc/libusb"
@@ -27,14 +28,61 @@ type USB1608FSPlus struct {
 	BulkEndpoint     *libusb.EndpointDescriptor
 }
 
-// Create creates a new instance of a USB1608FSPlus.
-func Create(ctx *libusb.Context) (*USB1608FSPlus, error) {
+// GetFromSN creates a new instance of a USB1608FSPlus by searching through the
+// list of USB devices for the given serial number.
+func GetFromSN(ctx *libusb.Context, sn string) (*USB1608FSPlus, error) {
+	var daq USB1608FSPlus
+	usbDevices, err := ctx.GetDeviceList()
+	if err != nil {
+		return &daq, fmt.Errorf("Error getting USB device list: %s", err)
+	}
+	// Search through the USB devices looking for serial number
+	for _, usbDevice := range usbDevices {
+		usbDeviceDescriptor, err := usbDevice.GetDeviceDescriptor()
+		if err != nil {
+			return &daq, fmt.Errorf("Error getting device descriptor: %s", err)
+		}
+		// Check the VendorID and Product ID. If those don't equate to MCC and
+		// USB-1608FS-Plus, then there's no reason to open the device and read its
+		// S/N.
+		if usbDeviceDescriptor.VendorID == vendorID &&
+			usbDeviceDescriptor.ProductID == productID {
+			// Found a USB-1608FS-Plus
+			usbDeviceHandle, err := usbDevice.Open()
+			if err != nil {
+				return &daq, fmt.Errorf("Error getting device handle: %s", err)
+			}
+			serialNum, err := usbDeviceHandle.GetStringDescriptorASCII(
+				usbDeviceDescriptor.SerialNumberIndex)
+			if err != nil {
+				return &daq, fmt.Errorf("Error reading S/N: %s", err)
+			}
+			serialNum = strings.TrimRight(serialNum, "\000")
+			if serialNum == sn {
+				return create(usbDevice, usbDeviceHandle)
+			}
+			usbDeviceHandle.Close()
+		}
+	}
+
+	// Close the list of devices
+	return &daq, fmt.Errorf("Couldn't find USB-1608FS-Plus S/N %s.", sn)
+}
+
+// GetFirstDevice creates a new instance of a USB1608FSPlus using the first
+// USB-1608FS-Plus found in the USB context.
+func GetFirstDevice(ctx *libusb.Context) (*USB1608FSPlus, error) {
 	var daq USB1608FSPlus
 	dev, dh, err := ctx.OpenDeviceWithVendorProduct(vendorID, productID)
 	if err != nil {
 		return &daq, fmt.Errorf("Error opening the USB-1608FS-Plus using the VendorID and ProductID, %s", err)
 	}
-	err = dh.ClaimInterface(0)
+	return create(dev, dh)
+}
+
+func create(dev *libusb.Device, dh *libusb.DeviceHandle) (*USB1608FSPlus, error) {
+	var daq USB1608FSPlus
+	err := dh.ClaimInterface(0)
 	if err != nil {
 		return &daq, fmt.Errorf("Error claiming the bulk interface %s", err)
 	}

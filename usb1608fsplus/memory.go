@@ -51,9 +51,9 @@ func (daq *USB1608FSPlus) BuildGainTable() (GainTable, error) {
 		Slope:     slope,
 		Intercept: intercept,
 	}
-	// In the c version, he reads from the device and sets the wMaxPacketSize,
-	// which is a global variable
-	// TODO(mdr): Do I need to do that as well?
+	// The C version of the USB-1608FS-Plus driver reads from the device and sets
+	// the wMaxPacketSize, which is a global variable.
+	// TODO(mdr): Should I be doing that as well?
 
 	return gainTable, nil
 }
