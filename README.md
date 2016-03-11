@@ -89,7 +89,7 @@ information.
 [libusb]: https://github.com/gotmc/libusb
 [libusb-c]: http://libusb.info
 [LICENSE.txt]: https://github.com/gotmc/mccdaq/blob/master/LICENSE.txt
-[license image]: http://img.shields.io/gotmc/l/mccdaq.svg
+[license image]: https://img.shields.io/badge/license-MIT-blue.svg
 [mccdaq]: https://github.com/gotmc/mccdaq
 [mcc-linux]: http://www.mccdaq.com/daq-software/Linux-Support.aspx
 [pull request]: https://help.github.com/articles/using-pull-requests
