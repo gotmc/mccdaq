@@ -77,7 +77,7 @@ const (
 	scanTriggerFallingEdge    scanOption = 0x2 << 2
 	scanTriggerHighLevel      scanOption = 0x3 << 2
 	scanTriggerLowLevel       scanOption = 0x4 << 2
-	scanDebugMode             scanOption = 0x10
+	scanDebugMode             scanOption = 0x20
 	scanStallOnOverrun        scanOption = 0x0
 	scanInhibitStall                     = 0x1 << 7
 )
