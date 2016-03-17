@@ -218,22 +218,25 @@ func (ai *analogInput) NumEnabledChannels() int {
 	return numEnabledChannels
 }
 
-// ReadScan reads the data from an analog scan
+func (ai *analogInput) Read(p []byte) (n int, err error) {
+	return ai.DAQ.DeviceHandle.BulkTransfer(
+		ai.DAQ.BulkEndpoint.EndpointAddress,
+		p,
+		len(p),
+		timeout,
+	)
+}
+
+// ReadScan reads the analog input data for the given number of scans
 func (ai *analogInput) ReadScan(numScans int) ([]byte, error) {
 	bytesInWord := 2
 	wordsToRead := numScans * ai.NumEnabledChannels()
 	bytesToRead := wordsToRead * bytesInWord
 	var data = make([]byte, bytesToRead)
-
 	if ai.TransferMode == ImmediateTransfer {
 		for i := 0; i < wordsToRead; i++ {
 			var word = make([]byte, bytesInWord)
-			bytesReceived, err := ai.DAQ.DeviceHandle.BulkTransfer(
-				ai.DAQ.BulkEndpoint.EndpointAddress,
-				word,
-				bytesInWord,
-				timeout,
-			)
+			bytesReceived, err := ai.Read(word)
 			if err != nil {
 				return data, fmt.Errorf("Problem with immediate scan %s", err)
 			}
@@ -244,12 +247,7 @@ func (ai *analogInput) ReadScan(numScans int) ([]byte, error) {
 			data[i+1] = word[1]
 		}
 	} else if ai.TransferMode == BlockTransfer {
-		bytesReceived, err := ai.DAQ.DeviceHandle.BulkTransfer(
-			ai.DAQ.BulkEndpoint.EndpointAddress,
-			data,
-			bytesToRead,
-			timeout,
-		)
+		bytesReceived, err := ai.Read(data)
 		if err != nil {
 			return data, fmt.Errorf("Problem with bulk scan %s", err)
 		}
@@ -278,7 +276,7 @@ func (ai *analogInput) ReadScan(numScans int) ([]byte, error) {
 		ai.ClearScanBuffer()
 	}
 
-	return data, nil
+	return data, err
 }
 
 // StopAnalogScan stops the analog input scan if running.

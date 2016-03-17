@@ -40,12 +40,12 @@ func main() {
 		daq.BulkEndpoint.EndpointAddress, daq.BulkEndpoint.EndpointAddress)
 
 	// Test blinking the LED
-	blinks := 5
-	count, err := daq.BlinkLED(blinks)
+	numBlinks := 5
+	actualBlinks, err := daq.BlinkLED(numBlinks)
 	if err != nil {
 		fmt.Errorf("Error blinking LED %s", err)
 	}
-	log.Printf("Sent %d byte of data to blink LED %d times.", count, blinks)
+	log.Printf("Sent %d byte of data to blink LED %d times.", actualBlinks, numBlinks)
 
 	// Get status
 	status, err := daq.Status()
@@ -61,7 +61,9 @@ func main() {
 	**************************/
 
 	// Setup stuff
-	count = 256
+	splitScansIn := 2
+	totalScans := 512
+	scansPerRead := totalScans / splitScansIn
 	var frequency float64 = 20000.0
 
 	// Create new analog input and ensure the scan is stopped and buffer cleared
@@ -80,16 +82,21 @@ func main() {
 	log.Printf("Ranges = %v\n", blah)
 
 	// Start the scan
-	ai.StartScan(count)
-	time.Sleep(1 * time.Second)
-	data, err := ai.ReadScan(count)
-	for i := 0; i < 8; i += 2 {
-		log.Printf("data[%d:%d] = %d %d\n", i, i+1, data[i+1], data[i])
+	ai.StartScan(totalScans)
+	for j := 0; j < splitScansIn; j++ {
+		time.Sleep(1 * time.Second)
+		data, err := ai.ReadScan(scansPerRead)
+		if err != nil {
+			log.Fatalf("Error reading scan: %s", err)
+		}
+		for i := 0; i < 8; i += 2 {
+			log.Printf("data[%d:%d] = %d %d\n", i, i+1, data[i+1], data[i])
+		}
+		for i := scansPerRead - 8; i < scansPerRead; i += 2 {
+			log.Printf("data[%d:%d] = %d %d\n", i, i+1, data[i+1], data[i])
+		}
+		log.Printf("data is %d bytes\n", len(data))
 	}
-	for i := count - 8; i < count; i += 2 {
-		log.Printf("data[%d:%d] = %d %d\n", i, i+1, data[i+1], data[i])
-	}
-	log.Printf("data is %d bytes\n", len(data))
 	ai.StopScan()
 	time.Sleep(1 * time.Second)
 
