@@ -56,44 +56,33 @@ func main() {
 	log.Printf("Slope = %v\n", gainTable.Slope)
 	log.Printf("Intercept = %v\n", gainTable.Intercept)
 
-	// Read one analog reading.
-	daq.StopAnalogScan()
-	time.Sleep(time.Second)
-	foo, err := daq.ReadAnalogInput(1, 0)
-	if err != nil {
-		log.Fatalf("Error reading one analog input. %s", err)
-	}
-	log.Printf("Read analog input %d", foo)
-
 	/**************************
 	* Start the Analog Scan   *
 	**************************/
 
 	// Setup stuff
-	var ranges = make([]byte, 8) // Range 0 is ±10V
-	for i := 0; i < len(ranges); i++ {
-		ranges[i] = 0
-	}
 	count = 256
-	var channels byte = 0x01 // one bit for each channel
 	var frequency float64 = 20000.0
-	// options := byte(0x1 | 0x2) // immediate w/ internal pacer on
-	options := byte(0x0 | 0x2 | 0x20) // bulk w/ internal pacer on
-	numChannels := 1
 
-	// Stop, clear, and configure
-	daq.StopAnalogScan()
+	// Create new analog input and ensure the scan is stopped and buffer cleared
+	ai := daq.NewAnalogInput(frequency)
+	ai.StopScan()
 	time.Sleep(time.Second)
-	daq.ClearScanBuffer()
-	daq.ConfigAnalogScan(ranges)
-	time.Sleep(2 * time.Second)
-	blah, err := daq.ReadScanRanges()
+	ai.ClearScanBuffer()
+	// Setup the analog input scan
+	ai.TransferMode = usb1608fsplus.BlockTransfer
+	ai.DebugMode = true
+	ai.ConfigureChannel(0, true, 5, "Vin1")
+	ai.SetScanRanges()
+	// Read the scan ranges
+	time.Sleep(time.Second)
+	blah, err := ai.ScanRanges()
 	log.Printf("Ranges = %v\n", blah)
 
 	// Start the scan
-	daq.StartAnalogScan(count, frequency, channels, options)
+	ai.StartScan(count)
 	time.Sleep(1 * time.Second)
-	data, err := daq.ReadScan(count, numChannels, options)
+	data, err := ai.ReadScan(count)
 	for i := 0; i < 8; i += 2 {
 		log.Printf("data[%d:%d] = %d %d\n", i, i+1, data[i+1], data[i])
 	}
@@ -101,7 +90,7 @@ func main() {
 		log.Printf("data[%d:%d] = %d %d\n", i, i+1, data[i+1], data[i])
 	}
 	log.Printf("data is %d bytes\n", len(data))
-	daq.StopAnalogScan()
+	ai.StopScan()
 	time.Sleep(1 * time.Second)
 
 	daq.Close()

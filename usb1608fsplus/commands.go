@@ -100,14 +100,10 @@ type voltageRange byte
 
 // Ranges
 const (
-	range10V    voltageRange = 0x0 // ±10V
-	range5V     voltageRange = 0x1 // ±5V
-	range2500mV voltageRange = 0x2 // ±2.5V
-	range2000mV voltageRange = 0x3 // ±2V
-	range1250mV voltageRange = 0x4 // ±1.25V
-	range1000mV voltageRange = 0x5 // ±1V
-	range625mV  voltageRange = 0x6 // ±0.625V
-	range312mV  voltageRange = 0x7 // ±0.3125V
+	Range10V voltageRange = 0x0 // ±10V
+	Range5V  voltageRange = 0x1 // ±5V
+	Range2V  voltageRange = 0x3 // ±2V
+	Range1V  voltageRange = 0x5 // ±1V
 )
 
 type statusBit byte

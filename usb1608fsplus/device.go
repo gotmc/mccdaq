@@ -25,7 +25,6 @@ type usb1608fsplus struct {
 	DeviceHandle     *libusb.DeviceHandle
 	ConfigDescriptor *libusb.ConfigDescriptor
 	BulkEndpoint     *libusb.EndpointDescriptor
-	AnalogInput      *analogInput
 }
 
 // NewViaSN creates a new daq instance by searching through the list of USB
