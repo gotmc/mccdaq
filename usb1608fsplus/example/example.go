@@ -22,7 +22,7 @@ func main() {
 	defer ctx.Exit()
 
 	// Create the USB-1608FS-Plus DAQ device
-	daq, err := usb1608fsplus.GetFromSN(ctx, "01ACD31D")
+	daq, err := usb1608fsplus.NewViaSN(ctx, "01ACD31D")
 	if err != nil {
 		log.Fatalf("Something bad getting S/N happened: %s", err)
 	}

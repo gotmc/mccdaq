@@ -20,7 +20,7 @@ func byteSlice(i int) []byte {
 
 // BlinkLED blinks the LED the given number of times. Note, the LED starts
 // being unlit, but will end being lit.
-func (daq *USB1608FSPlus) BlinkLED(count int) (int, error) {
+func (daq *usb1608fsplus) BlinkLED(count int) (int, error) {
 	requestType := libusb.BitmapRequestType(
 		libusb.HostToDevice, libusb.Vendor, libusb.DeviceRecipient)
 	// data := byteSlice(count)
@@ -37,7 +37,7 @@ func (daq *USB1608FSPlus) BlinkLED(count int) (int, error) {
 
 // Status retrieves the status of the device and clears the error
 // indicators.
-func (daq *USB1608FSPlus) Status() (byte, error) {
+func (daq *usb1608fsplus) Status() (byte, error) {
 	requestType := libusb.BitmapRequestType(
 		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
 	data := make([]byte, 2)
@@ -49,7 +49,7 @@ func (daq *USB1608FSPlus) Status() (byte, error) {
 
 // SerialNumber retrieves the serial number via a control transfer using the
 // serial command (0x48) as opposed to using the libusb serial number.
-func (daq *USB1608FSPlus) SerialNumber() (string, error) {
+func (daq *usb1608fsplus) SerialNumber() (string, error) {
 	requestType := libusb.BitmapRequestType(
 		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
 	data := make([]byte, 8)

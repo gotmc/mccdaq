@@ -19,27 +19,71 @@ const (
 )
 
 type AnalogInputer interface {
-	GetValue(int, int) (uint, error)
+	ValueOnChannel(int) (uint, error)
 	Read([]byte) (int, error)
+	ConfigScan() error
+	StartScan(int) error
+	StopScan() error
 }
 
-type AnalogInput struct {
-	daq *USB1608FSPlus
+type analogInput struct {
+	daq           *usb1608fsplus
+	TransferMode  TransferMode
+	InternalPacer InternalPacer
+	Trigger       Trigger
+	DebugMode     DebugMode
+	Stall         Stall
 }
 
-// ReadAnalogInput reads the value of an analog input channel. This command
-// will result in a bus stall if an AInScan is currenty running.
-func (daq *USB1608FSPlus) ReadAnalogInput(channel int, rng voltageRange) (uint, error) {
-	requestType := libusb.BitmapRequestType(
-		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
-	data := make([]byte, 2)
-	_, err := daq.DeviceHandle.ControlTransfer(
-		requestType, byte(commandAnalogInput), uint16(channel), uint16(rng), data, len(data), timeout)
-	if err != nil {
-		return 0, fmt.Errorf("Error reading analog input %s", err)
+type Stall byte
+
+const (
+	OnOverrun Stall = 0x0
+	Inhibited Stall = 0x1
+)
+
+type TransferMode byte
+
+const (
+	BlockTransfer     TransferMode = 0x0
+	ImmediateTransfer TransferMode = 0x1
+)
+
+type InternalPacer byte
+
+const (
+	InternalPacerOff InternalPacer = 0x0
+	InternalPacerOn  InternalPacer = 0x1
+)
+
+type Trigger byte
+
+const (
+	NoExternalTrigger  Trigger = 0x0
+	RisingEdgeTrigger  Trigger = 0x1
+	FallingEdgeTrigger Trigger = 0x2
+	HighLevelTrigger   Trigger = 0x3
+	LowLevelTrigger    Trigger = 0x4
+)
+
+type DebugMode bool
+
+func NewAnalogInput(
+	daq *usb1608fsplus,
+	transferMode TransferMode,
+	internalPacer InternalPacer,
+	trigger Trigger,
+	debugMode DebugMode,
+	stall Stall,
+) *analogInput {
+	return &analogInput{
+		daq,
+		transferMode,
+		internalPacer,
+		trigger,
+		debugMode,
+		stall,
 	}
-	value := binary.LittleEndian.Uint16(data)
-	return uint(value), nil
 }
 
 // StartAnalogScan starts an analog input scan. If an AInScan is currently
@@ -75,7 +119,7 @@ func (daq *USB1608FSPlus) ReadAnalogInput(channel int, rng voltageRange) (uint, 
 	 count or an usbAInScanStop_USB1608FS_Plus() command is sent.
 
 	 The external trigger may be used to start the scan.  If enabled, the device
-	 will wait until the appropriate trigger condition is detected than begin
+	 will wait until the appropriate trigger condition is detected then begin
 	 sampling data at the specified rate.  No packets will be sent until the
 	 trigger is detected.
 
@@ -90,9 +134,9 @@ func (daq *USB1608FSPlus) ReadAnalogInput(channel int, rng voltageRange) (uint, 
 
 	 Overruns are indicated by the device stalling the bulk endpoint during the
 	 scan.  The host may read the status to verify and clear the stall condition
-	 before further scan can be performed.
+   before further scan can be performed.
 */
-func (daq *USB1608FSPlus) StartAnalogScan(
+func (daq *usb1608fsplus) StartAnalogScan(
 	numScans int, frequency float64, channels byte, options byte,
 ) error {
 	data := packScanData(numScans, frequency, channels, options)
@@ -115,7 +159,7 @@ func (daq *USB1608FSPlus) StartAnalogScan(
 }
 
 // ReadScan reads the data from an analog scan
-func (daq *USB1608FSPlus) ReadScan(
+func (daq *usb1608fsplus) ReadScan(
 	numScans int, numChannels int, options byte,
 ) ([]byte, error) {
 	bytesInWord := 2
@@ -179,7 +223,7 @@ func (daq *USB1608FSPlus) ReadScan(
 }
 
 // StopAnalogScan stops the analog input scan if running.
-func (daq *USB1608FSPlus) StopAnalogScan() error {
+func (daq *usb1608fsplus) StopAnalogScan() error {
 	_, err := daq.SendCommandToDevice(commandAnalogStopScan, nil)
 	if err != nil {
 		return fmt.Errorf("Error stopping analog input scan %s", err)
@@ -188,7 +232,7 @@ func (daq *USB1608FSPlus) StopAnalogScan() error {
 }
 
 // ClearScanBuffer clears the internal scan endpoint FIFO buffer
-func (daq *USB1608FSPlus) ClearScanBuffer() error {
+func (daq *usb1608fsplus) ClearScanBuffer() error {
 	_, err := daq.SendCommandToDevice(commandAnalogClearBuffer, nil)
 	if err != nil {
 		return fmt.Errorf("Error clearing analog input scan FIFO buffer %s", err)
@@ -198,7 +242,7 @@ func (daq *USB1608FSPlus) ClearScanBuffer() error {
 
 // ConfigAnalogScan read or writes the analog input configuration. This command
 // will result in a bus stall if an AIn scan is currently running.
-func (daq *USB1608FSPlus) ConfigAnalogScan(ranges []byte) error {
+func (daq *usb1608fsplus) ConfigAnalogScan(ranges []byte) error {
 	if len(ranges) != 8 {
 		return fmt.Errorf("Length of ranges slice is not 8 bytes")
 	}
@@ -209,7 +253,7 @@ func (daq *USB1608FSPlus) ConfigAnalogScan(ranges []byte) error {
 	return nil
 }
 
-func (daq *USB1608FSPlus) ReadScanRanges() ([]byte, error) {
+func (daq *usb1608fsplus) ReadScanRanges() ([]byte, error) {
 	var ranges = make([]byte, 8)
 	requestType := libusb.BitmapRequestType(
 		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
@@ -264,7 +308,7 @@ func round(f float64) int {
 	return int(f + math.Copysign(0.5, f))
 }
 
-func (daq *USB1608FSPlus) SendCommandToDevice(cmd command, data []byte) (int, error) {
+func (daq *usb1608fsplus) SendCommandToDevice(cmd command, data []byte) (int, error) {
 	if data == nil {
 		data = []byte{0}
 	}
@@ -276,4 +320,19 @@ func (daq *USB1608FSPlus) SendCommandToDevice(cmd command, data []byte) (int, er
 		return bytesReceived, fmt.Errorf("Error sending command '%s' to device %s", cmd, err)
 	}
 	return bytesReceived, nil
+}
+
+// ReadAnalogInput reads the value of an analog input channel. This command
+// will result in a bus stall if an AInScan is currenty running.
+func (daq *usb1608fsplus) ReadAnalogInput(channel int, rng voltageRange) (uint, error) {
+	requestType := libusb.BitmapRequestType(
+		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
+	data := make([]byte, 2)
+	_, err := daq.DeviceHandle.ControlTransfer(
+		requestType, byte(commandAnalogInput), uint16(channel), uint16(rng), data, len(data), timeout)
+	if err != nil {
+		return 0, fmt.Errorf("Error reading analog input %s", err)
+	}
+	value := binary.LittleEndian.Uint16(data)
+	return uint(value), nil
 }

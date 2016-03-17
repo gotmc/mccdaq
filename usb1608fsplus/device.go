@@ -18,19 +18,20 @@ const (
 	defaultTimeout = 2000
 )
 
-type USB1608FSPlus struct {
+type usb1608fsplus struct {
 	Timeout          int
 	Device           *libusb.Device
 	DeviceDescriptor *libusb.DeviceDescriptor
 	DeviceHandle     *libusb.DeviceHandle
 	ConfigDescriptor *libusb.ConfigDescriptor
 	BulkEndpoint     *libusb.EndpointDescriptor
+	AnalogInput      *analogInput
 }
 
-// GetFromSN creates a new instance of a USB1608FSPlus by searching through the
-// list of USB devices for the given serial number.
-func GetFromSN(ctx *libusb.Context, sn string) (*USB1608FSPlus, error) {
-	var daq USB1608FSPlus
+// NewViaSN creates a new daq instance by searching through the list of USB
+// devices for the given serial number.
+func NewViaSN(ctx *libusb.Context, sn string) (*usb1608fsplus, error) {
+	var daq usb1608fsplus
 	usbDevices, err := ctx.GetDeviceList()
 	if err != nil {
 		return &daq, fmt.Errorf("Error getting USB device list: %s", err)
@@ -62,15 +63,14 @@ func GetFromSN(ctx *libusb.Context, sn string) (*USB1608FSPlus, error) {
 			usbDeviceHandle.Close()
 		}
 	}
-
 	// Close the list of devices
 	return &daq, fmt.Errorf("Couldn't find USB-1608FS-Plus S/N %s.", sn)
 }
 
-// GetFirstDevice creates a new instance of a USB1608FSPlus using the first
+// GetFirstDevice creates a new instance of a daq using the first
 // USB-1608FS-Plus found in the USB context.
-func GetFirstDevice(ctx *libusb.Context) (*USB1608FSPlus, error) {
-	var daq USB1608FSPlus
+func GetFirstDevice(ctx *libusb.Context) (*usb1608fsplus, error) {
+	var daq usb1608fsplus
 	dev, dh, err := ctx.OpenDeviceWithVendorProduct(vendorID, productID)
 	if err != nil {
 		return &daq, fmt.Errorf("Error opening the USB-1608FS-Plus using the VendorID and ProductID, %s", err)
@@ -78,8 +78,8 @@ func GetFirstDevice(ctx *libusb.Context) (*USB1608FSPlus, error) {
 	return create(dev, dh)
 }
 
-func create(dev *libusb.Device, dh *libusb.DeviceHandle) (*USB1608FSPlus, error) {
-	var daq USB1608FSPlus
+func create(dev *libusb.Device, dh *libusb.DeviceHandle) (*usb1608fsplus, error) {
+	var daq usb1608fsplus
 	err := dh.ClaimInterface(0)
 	if err != nil {
 		return &daq, fmt.Errorf("Error claiming the bulk interface %s", err)
@@ -102,7 +102,7 @@ func create(dev *libusb.Device, dh *libusb.DeviceHandle) (*USB1608FSPlus, error)
 	return &daq, nil
 }
 
-func (daq *USB1608FSPlus) Close() error {
+func (daq *usb1608fsplus) Close() error {
 	// Release the interface and close up shop
 	err := daq.DeviceHandle.ReleaseInterface(0)
 	if err != nil {
@@ -119,7 +119,7 @@ func (daq *USB1608FSPlus) Close() error {
 }
 
 // Reset resets the device.
-func (daq *USB1608FSPlus) Reset() (int, error) {
+func (daq *usb1608fsplus) Reset() (int, error) {
 	requestType := libusb.BitmapRequestType(
 		libusb.HostToDevice, libusb.Vendor, libusb.DeviceRecipient)
 	ret, err := daq.DeviceHandle.ControlTransfer(
