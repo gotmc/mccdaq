@@ -68,27 +68,27 @@ type scanOption byte
 
 // Analog input scan options
 const (
-	scanBlockTransferMode     scanOption = 0x0
-	scanImmediateTransferMode scanOption = 0x1
-	scanInternalPacerOff      scanOption = 0x0
-	scanInternalPacerOn       scanOption = 0x2
-	scanNoTrigger             scanOption = 0x0
+	scanBlockTransferMode     scanOption = 0x0 << 0
+	scanImmediateTransferMode scanOption = 0x1 << 0
+	scanInternalPacerOff      scanOption = 0x0 << 1
+	scanInternalPacerOn       scanOption = 0x1 << 1
+	scanNoTrigger             scanOption = 0x0 << 2
 	scanTriggerRisingEdge     scanOption = 0x1 << 2
 	scanTriggerFallingEdge    scanOption = 0x2 << 2
 	scanTriggerHighLevel      scanOption = 0x3 << 2
 	scanTriggerLowLevel       scanOption = 0x4 << 2
-	scanDebugMode             scanOption = 0x20
-	scanStallOnOverrun        scanOption = 0x0
-	scanInhibitStall                     = 0x1 << 7
+	scanDebugMode             scanOption = 0x1 << 5
+	scanStallOnOverrun        scanOption = 0x0 << 7
+	scanInhibitStall          scanOption = 0x1 << 7
 )
 
-type analogInput byte
+type analogInputSetup byte
 
 // Analog input setup
 const (
-	singleEnded  analogInput = 0
-	differential analogInput = 1
-	calibration  analogInput = 3
+	singleEnded  analogInputSetup = 0
+	differential analogInputSetup = 1
+	calibration  analogInputSetup = 3
 )
 
 const (
