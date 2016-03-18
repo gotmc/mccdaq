@@ -279,6 +279,11 @@ func (ai *analogInput) ReadScan(numScans int) ([]byte, error) {
 	return data, err
 }
 
+// Close stops the analog input scan if running.
+func (ai *analogInput) Close() error {
+	return ai.StopScan()
+}
+
 // StopAnalogScan stops the analog input scan if running.
 func (ai *analogInput) StopScan() error {
 	_, err := ai.DAQ.SendCommandToDevice(commandAnalogStopScan, nil)

@@ -61,6 +61,7 @@ func main() {
 	**************************/
 
 	// Setup stuff
+	const millisecondDelay = 100
 	splitScansIn := 2
 	totalScans := 512
 	scansPerRead := totalScans / splitScansIn
@@ -69,7 +70,7 @@ func main() {
 	// Create new analog input and ensure the scan is stopped and buffer cleared
 	ai := daq.NewAnalogInput(frequency)
 	ai.StopScan()
-	time.Sleep(time.Second)
+	time.Sleep(millisecondDelay * time.Millisecond)
 	ai.ClearScanBuffer()
 	// Setup the analog input scan
 	ai.TransferMode = usb1608fsplus.BlockTransfer
@@ -77,14 +78,14 @@ func main() {
 	ai.ConfigureChannel(0, true, 5, "Vin1")
 	ai.SetScanRanges()
 	// Read the scan ranges
-	time.Sleep(time.Second)
-	blah, err := ai.ScanRanges()
-	log.Printf("Ranges = %v\n", blah)
+	time.Sleep(millisecondDelay * time.Millisecond)
+	scanRanges, err := ai.ScanRanges()
+	log.Printf("Ranges = %v\n", scanRanges)
 
 	// Start the scan
 	ai.StartScan(totalScans)
 	for j := 0; j < splitScansIn; j++ {
-		time.Sleep(1 * time.Second)
+		time.Sleep(millisecondDelay * time.Millisecond)
 		data, err := ai.ReadScan(scansPerRead)
 		if err != nil {
 			log.Fatalf("Error reading scan: %s", err)
@@ -98,8 +99,7 @@ func main() {
 		log.Printf("data is %d bytes\n", len(data))
 	}
 	ai.StopScan()
-	time.Sleep(1 * time.Second)
-
+	time.Sleep(millisecondDelay * time.Millisecond)
 	daq.Close()
 
 }
