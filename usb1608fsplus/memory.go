@@ -80,7 +80,7 @@ func (daq *usb1608fsplus) ReadCalMemory(address int, count int) ([]byte, error) 
 	}
 
 	daq.DeviceHandle.ControlTransfer(
-		requestType, byte(commandCalibrationMemory), uint16(address), 0x0, data, count, timeout)
+		requestType, byte(commandCalibrationMemory), uint16(address), 0x0, data, count, daq.Timeout)
 	return data, nil
 }
 

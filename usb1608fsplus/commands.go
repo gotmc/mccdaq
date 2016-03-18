@@ -5,8 +5,6 @@
 
 package usb1608fsplus
 
-const timeout = 2000
-
 type command byte
 
 // Log level enumeration

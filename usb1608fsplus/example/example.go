@@ -62,7 +62,7 @@ func main() {
 
 	// Setup stuff
 	const millisecondDelay = 100
-	splitScansIn := 2
+	splitScansIn := 4
 	totalScans := 512
 	scansPerRead := totalScans / splitScansIn
 	var frequency float64 = 20000.0
@@ -90,6 +90,8 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error reading scan: %s", err)
 		}
+		// FIXME(mdr): Are we receiving the correct values when reading multiple
+		// times????
 		for i := 0; i < 8; i += 2 {
 			log.Printf("data[%d:%d] = %d %d\n", i, i+1, data[i+1], data[i])
 		}

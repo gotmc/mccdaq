@@ -28,7 +28,7 @@ func (daq *usb1608fsplus) BlinkLED(count int) (int, error) {
 	data[0] = byte(count)
 
 	ret, err := daq.DeviceHandle.ControlTransfer(
-		requestType, byte(commandBlinkLED), 0x0, 0x0, data, len(data), timeout)
+		requestType, byte(commandBlinkLED), 0x0, 0x0, data, len(data), daq.Timeout)
 	if err != nil {
 		return ret, fmt.Errorf("Error blinking LED %s", err)
 	}
@@ -42,7 +42,7 @@ func (daq *usb1608fsplus) Status() (byte, error) {
 		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
 	data := make([]byte, 2)
 	daq.DeviceHandle.ControlTransfer(
-		requestType, byte(commandGetStatus), 0x0, 0x0, data, len(data), timeout)
+		requestType, byte(commandGetStatus), 0x0, 0x0, data, len(data), daq.Timeout)
 	status := binary.LittleEndian.Uint16(data)
 	return byte(status), nil
 }
@@ -54,7 +54,7 @@ func (daq *usb1608fsplus) SerialNumber() (string, error) {
 		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
 	data := make([]byte, 8)
 	daq.DeviceHandle.ControlTransfer(
-		requestType, byte(commandSerialNum), 0x0, 0x0, data, len(data), timeout)
+		requestType, byte(commandSerialNum), 0x0, 0x0, data, len(data), daq.Timeout)
 	return string(data), nil
 }
 
@@ -62,12 +62,12 @@ func (daq *usb1608fsplus) SerialNumber() (string, error) {
 // portion of the program memory. The next time the device is reset, it will
 // enumerate in the bootloader and is unusable as a DAQ device until new
 // firmware is loaded.
-func UpgradeFirmware(dh *libusb.DeviceHandle) error {
+func (daq *usb1608fsplus) UpgradeFirmware() error {
 	requestType := libusb.BitmapRequestType(
 		libusb.HostToDevice, libusb.Vendor, libusb.DeviceRecipient)
 	key := uint16(0xadad)
-	_, err := dh.ControlTransfer(
-		requestType, byte(commandUpgradeFirmware), key, 0x0, []byte{}, 0, timeout)
+	_, err := daq.DeviceHandle.ControlTransfer(
+		requestType, byte(commandUpgradeFirmware), key, 0x0, []byte{}, 0, daq.Timeout)
 	if err != nil {
 		return fmt.Errorf("Error enabling upgrade firmware mode %s", err)
 	}

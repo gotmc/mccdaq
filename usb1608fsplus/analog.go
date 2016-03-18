@@ -223,7 +223,7 @@ func (ai *analogInput) Read(p []byte) (n int, err error) {
 		ai.DAQ.BulkEndpoint.EndpointAddress,
 		p,
 		len(p),
-		timeout,
+		ai.DAQ.Timeout,
 	)
 }
 
@@ -323,7 +323,7 @@ func (ai *analogInput) ScanRanges() ([]byte, error) {
 	requestType := libusb.BitmapRequestType(
 		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
 	_, err := ai.DAQ.DeviceHandle.ControlTransfer(
-		requestType, byte(commandAnalogConfig), 0x0, 0x0, ranges, 8, timeout)
+		requestType, byte(commandAnalogConfig), 0x0, 0x0, ranges, 8, ai.DAQ.Timeout)
 	if err != nil {
 		return ranges, fmt.Errorf("Error reading Ain config %s", err)
 	}
@@ -394,7 +394,7 @@ func (daq *usb1608fsplus) ReadAnalogInput(channel int, rng voltageRange) (uint, 
 		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
 	data := make([]byte, 2)
 	_, err := daq.DeviceHandle.ControlTransfer(
-		requestType, byte(commandAnalogInput), uint16(channel), uint16(rng), data, len(data), timeout)
+		requestType, byte(commandAnalogInput), uint16(channel), uint16(rng), data, len(data), daq.Timeout)
 	if err != nil {
 		return 0, fmt.Errorf("Error reading analog input %s", err)
 	}

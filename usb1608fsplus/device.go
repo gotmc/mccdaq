@@ -122,7 +122,7 @@ func (daq *usb1608fsplus) Reset() (int, error) {
 	requestType := libusb.BitmapRequestType(
 		libusb.HostToDevice, libusb.Vendor, libusb.DeviceRecipient)
 	ret, err := daq.DeviceHandle.ControlTransfer(
-		requestType, byte(commandReset), 0x0, 0x0, []byte{0x00}, 1, timeout)
+		requestType, byte(commandReset), 0x0, 0x0, []byte{0x00}, 1, daq.Timeout)
 	if err != nil {
 		return ret, fmt.Errorf("Error resetting devices %s", err)
 	}
