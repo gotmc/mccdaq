@@ -14,6 +14,8 @@ import (
 	"github.com/gotmc/mccdaq/usb1608fsplus"
 )
 
+const millisecondDelay = 100
+
 func main() {
 	ctx, err := libusb.Init()
 	if err != nil {
@@ -22,7 +24,7 @@ func main() {
 	defer ctx.Exit()
 
 	// Create the USB-1608FS-Plus DAQ device
-	daq, err := usb1608fsplus.GetFromSN(ctx, "01ACD31D")
+	daq, err := usb1608fsplus.NewViaSN(ctx, "01ACD31D")
 	if err != nil {
 		log.Fatalf("Something bad getting S/N happened: %s", err)
 	}
@@ -40,12 +42,12 @@ func main() {
 		daq.BulkEndpoint.EndpointAddress, daq.BulkEndpoint.EndpointAddress)
 
 	// Test blinking the LED
-	blinks := 5
-	count, err := daq.BlinkLED(blinks)
+	numBlinks := 5
+	actualBlinks, err := daq.BlinkLED(numBlinks)
 	if err != nil {
 		fmt.Errorf("Error blinking LED %s", err)
 	}
-	log.Printf("Sent %d byte of data to blink LED %d times.", count, blinks)
+	log.Printf("Sent %d byte of data to blink LED %d times.", actualBlinks, numBlinks)
 
 	// Get status
 	status, err := daq.Status()
@@ -56,54 +58,51 @@ func main() {
 	log.Printf("Slope = %v\n", gainTable.Slope)
 	log.Printf("Intercept = %v\n", gainTable.Intercept)
 
-	// Read one analog reading.
-	daq.StopAnalogScan()
-	time.Sleep(time.Second)
-	foo, err := daq.ReadAnalogInput(1, 0)
-	if err != nil {
-		log.Fatalf("Error reading one analog input. %s", err)
-	}
-	log.Printf("Read analog input %d", foo)
-
 	/**************************
 	* Start the Analog Scan   *
 	**************************/
 
-	// Setup stuff
-	var ranges = make([]byte, 8) // Range 0 is ±10V
-	for i := 0; i < len(ranges); i++ {
-		ranges[i] = 0
-	}
-	count = 256
-	var channels byte = 0x01 // one bit for each channel
+	// Create new analog input and ensure the scan is stopped and buffer cleared
 	var frequency float64 = 20000.0
-	// options := byte(0x1 | 0x2) // immediate w/ internal pacer on
-	options := byte(0x0 | 0x2 | 0x20) // bulk w/ internal pacer on
-	numChannels := 1
+	ai := daq.NewAnalogInput(frequency)
+	ai.StopScan()
+	time.Sleep(millisecondDelay * time.Millisecond)
+	ai.ClearScanBuffer()
 
-	// Stop, clear, and configure
-	daq.StopAnalogScan()
-	time.Sleep(time.Second)
-	daq.ClearScanBuffer()
-	daq.ConfigAnalogScan(ranges)
-	time.Sleep(2 * time.Second)
-	blah, err := daq.ReadScanRanges()
-	log.Printf("Ranges = %v\n", blah)
+	// Setup the analog input scan
+	ai.TransferMode = usb1608fsplus.BlockTransfer
+	ai.DebugMode = true
+	ai.ConfigureChannel(0, true, 5, "Vin1")
+	ai.SetScanRanges()
 
-	// Start the scan
-	daq.StartAnalogScan(count, frequency, channels, options)
-	time.Sleep(1 * time.Second)
-	data, err := daq.ReadScan(count, numChannels, options)
-	for i := 0; i < 8; i += 2 {
-		log.Printf("data[%d:%d] = %d %d\n", i, i+1, data[i+1], data[i])
+	// Read the scan ranges
+	time.Sleep(millisecondDelay * time.Millisecond)
+	scanRanges, err := ai.ScanRanges()
+	log.Printf("Ranges = %v\n", scanRanges)
+
+	// Read the totalScans using splitScansIn number of scans
+	splitScansIn := 2
+	totalScans := 1024
+	scansPerRead := totalScans / splitScansIn
+	ai.StartScan(totalScans)
+	for j := 0; j < splitScansIn; j++ {
+		time.Sleep(millisecondDelay * time.Millisecond)
+		data, err := ai.ReadScan(scansPerRead)
+		if err != nil {
+			log.Fatalf("Error reading scan: %s", err)
+		}
+		// Print the first 8 bytes and the last 8 bytes of each read
+		bytesToShow := 8
+		for i := 0; i < bytesToShow; i += 2 {
+			log.Printf("data[%d:%d] = 0x%02x%02x\n", i, i+1, data[i+1], data[i])
+		}
+		for i := len(data) - bytesToShow; i < len(data); i += 2 {
+			log.Printf("data[%d:%d] = 0x%02x%02x\n", i, i+1, data[i+1], data[i])
+		}
+		log.Printf("data is %d bytes\n", len(data))
 	}
-	for i := count - 8; i < count; i += 2 {
-		log.Printf("data[%d:%d] = %d %d\n", i, i+1, data[i+1], data[i])
-	}
-	log.Printf("data is %d bytes\n", len(data))
-	daq.StopAnalogScan()
-	time.Sleep(1 * time.Second)
-
+	// Stop the analog scan and close the DAQ
+	ai.StopScan()
+	time.Sleep(millisecondDelay * time.Millisecond)
 	daq.Close()
-
 }

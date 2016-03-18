@@ -12,6 +12,71 @@ import (
 	c "github.com/smartystreets/goconvey/convey"
 )
 
+type FakeDAQer struct {
+	Ranges [8]byte
+}
+
+func (f *FakeDAQer) SendCommandToDevice(cmd command, data []byte) (int, error) {
+	if cmd == commandAnalogConfig {
+		if len(data) != len(f.Ranges) {
+			return 0, fmt.Errorf("data is wrong length %d", len(data))
+		}
+		for i, datum := range data {
+			f.Ranges[i] = datum
+		}
+		return len(data), nil
+	}
+	return 0, fmt.Errorf("Error sending command to fake DAQer device")
+}
+
+func (f *FakeDAQer) ReadCommandFromDevice(cmd command, data []byte) (int, error) {
+	if cmd == commandAnalogConfig {
+		if len(data) != len(f.Ranges) {
+			return 0, fmt.Errorf("data is wrong length %d", len(data))
+		}
+		for i, x := range f.Ranges {
+			data[i] = x
+		}
+		return len(data), nil
+	}
+	return 0, fmt.Errorf("Error sending command to fake DAQer device")
+}
+
+func (f *FakeDAQer) Read(p []byte) (n int, err error) {
+	return 0, nil
+}
+
+func (f *FakeDAQer) Status() (byte, error) {
+	return 0x0, nil
+}
+
+func TestSetScanRanges(t *testing.T) {
+	givenRanges := [...]byte{0x0, 0x0, 0x1, 0x1, 0x3, 0x3, 0x5, 0x5}
+	f := FakeDAQer{}
+	ai := analogInput{
+		DAQer:             &f,
+		Frequency:         500,
+		TransferMode:      ImmediateTransfer,
+		Trigger:           RisingEdgeTrigger,
+		UseExternalPacer:  true,
+		OutputPacerOnSync: true,
+		DebugMode:         false,
+		Stall:             StallInhibited,
+	}
+	for i, givenRange := range givenRanges {
+		ai.Channels[i].Range = voltageRange(givenRange)
+	}
+	c.Convey("Given the need to set the scan ranges in the DAQ", t, func() {
+		c.Convey("When the SetScanRanges() method is called", func() {
+			ai.SetScanRanges()
+			c.Convey("Then the ranges should be written to the DAQ", func() {
+				ranges, _ := ai.ScanRanges()
+				c.So(ranges, c.ShouldResemble, givenRanges[:])
+			})
+		})
+	})
+}
+
 func TestPackScanData(t *testing.T) {
 	testCases := []struct {
 		numScans  int
