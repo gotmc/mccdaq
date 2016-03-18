@@ -18,6 +18,13 @@ const (
 	defaultTimeout = 2000
 )
 
+type DAQer interface {
+	SendCommandToDevice(cmd command, data []byte) (int, error)
+	ReadCommandFromDevice(cmd command, data []byte) (int, error)
+	Read(p []byte) (n int, err error)
+	Status() (byte, error)
+}
+
 type usb1608fsplus struct {
 	Timeout          int
 	Device           *libusb.Device
@@ -127,4 +134,45 @@ func (daq *usb1608fsplus) Reset() (int, error) {
 		return ret, fmt.Errorf("Error resetting devices %s", err)
 	}
 	return ret, nil
+}
+
+// SendCommandToDevice sends the given command and data to the device and
+// returns the number of bytes received and whether or not an error was
+// received.
+func (daq *usb1608fsplus) SendCommandToDevice(cmd command, data []byte) (int, error) {
+	if data == nil {
+		data = []byte{0}
+	}
+	requestType := libusb.BitmapRequestType(
+		libusb.HostToDevice, libusb.Vendor, libusb.DeviceRecipient)
+	bytesReceived, err := daq.DeviceHandle.ControlTransfer(
+		requestType, byte(cmd), 0x0, 0x0, data, len(data), daq.Timeout)
+	if err != nil {
+		return bytesReceived, fmt.Errorf("Error sending command '%s' to device: %s", cmd, err)
+	}
+	return bytesReceived, nil
+}
+
+func (daq *usb1608fsplus) ReadCommandFromDevice(cmd command, data []byte) (int, error) {
+	if data == nil {
+		data = []byte{0}
+	}
+	requestType := libusb.BitmapRequestType(
+		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
+	bytesReceived, err := daq.DeviceHandle.ControlTransfer(
+		requestType, byte(cmd), 0x0, 0x0, data, len(data), daq.Timeout)
+	if err != nil {
+		return bytesReceived, fmt.Errorf("Error reading command '%s' from device: %s", cmd, err)
+	}
+	return bytesReceived, nil
+
+}
+
+func (daq *usb1608fsplus) Read(p []byte) (n int, err error) {
+	return daq.DeviceHandle.BulkTransfer(
+		daq.BulkEndpoint.EndpointAddress,
+		p,
+		len(p),
+		daq.Timeout,
+	)
 }

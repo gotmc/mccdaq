@@ -28,7 +28,7 @@ type channel struct {
 type channels [8]channel
 
 type analogInput struct {
-	DAQ               *usb1608fsplus
+	DAQer
 	Frequency         float64
 	TransferMode      TransferMode
 	Trigger           TriggerType
@@ -45,7 +45,7 @@ func (daq *usb1608fsplus) NewAnalogInput(freq float64) *analogInput {
 		channels[i].Range = Range10V
 	}
 	analogInput := analogInput{
-		DAQ:               daq,
+		DAQer:             daq,
 		Frequency:         freq,
 		TransferMode:      BlockTransfer,
 		Trigger:           NoExternalTrigger,
@@ -201,7 +201,7 @@ func (ai *analogInput) StartScan(numScans int) error {
 	if err != nil {
 		return fmt.Errorf("Error clearing buffer prior to starting a new scan %s", err)
 	}
-	_, err = ai.DAQ.SendCommandToDevice(commandAnalogStartScan, data)
+	_, err = ai.SendCommandToDevice(commandAnalogStartScan, data)
 	if err != nil {
 		return fmt.Errorf("Error starting analog input scan %s", err)
 	}
@@ -216,15 +216,6 @@ func (ai *analogInput) NumEnabledChannels() int {
 		}
 	}
 	return numEnabledChannels
-}
-
-func (ai *analogInput) Read(p []byte) (n int, err error) {
-	return ai.DAQ.DeviceHandle.BulkTransfer(
-		ai.DAQ.BulkEndpoint.EndpointAddress,
-		p,
-		len(p),
-		ai.DAQ.Timeout,
-	)
 }
 
 // ReadScan reads the analog input data for the given number of scans
@@ -257,18 +248,15 @@ func (ai *analogInput) ReadScan(numScans int) ([]byte, error) {
 	} else {
 		return data, fmt.Errorf("Bad transfer mode")
 	}
-	status, err := ai.DAQ.Status()
+	status, err := ai.Status()
 	if err != nil {
 		fmt.Errorf("Error getting status during analog bulk read %s", err)
 	}
 	// If bytesToRead is a multiple of wMaxPacketSize the device will send a zero
 	// byte packet.
 	if (bytesToRead%maxBulkTransferPacketSize) == 0 && (status&byte(scanRunning) == 0) {
-		_, _, _ = ai.DAQ.DeviceHandle.BulkTransferIn(
-			ai.DAQ.BulkEndpoint.EndpointAddress,
-			bytesInWord,
-			100,
-		)
+		var data = make([]byte, bytesInWord)
+		_, _ = ai.Read(data)
 	}
 	if status&byte(scanOverrun) != 0 {
 		log.Printf("Analog AIn scan overrun.\n")
@@ -286,7 +274,7 @@ func (ai *analogInput) Close() error {
 
 // StopAnalogScan stops the analog input scan if running.
 func (ai *analogInput) StopScan() error {
-	_, err := ai.DAQ.SendCommandToDevice(commandAnalogStopScan, nil)
+	_, err := ai.SendCommandToDevice(commandAnalogStopScan, nil)
 	if err != nil {
 		return fmt.Errorf("Error stopping analog input scan %s", err)
 	}
@@ -295,7 +283,7 @@ func (ai *analogInput) StopScan() error {
 
 // ClearScanBuffer clears the internal scan endpoint FIFO buffer
 func (ai *analogInput) ClearScanBuffer() error {
-	_, err := ai.DAQ.SendCommandToDevice(commandAnalogClearBuffer, nil)
+	_, err := ai.SendCommandToDevice(commandAnalogClearBuffer, nil)
 	if err != nil {
 		return fmt.Errorf("Error clearing analog input scan FIFO buffer %s", err)
 	}
@@ -311,7 +299,7 @@ func (ai *analogInput) SetScanRanges() error {
 	if len(ranges) != 8 {
 		return fmt.Errorf("length of ranges slice is not 8 bytes")
 	}
-	_, err := ai.DAQ.SendCommandToDevice(commandAnalogConfig, ranges)
+	_, err := ai.SendCommandToDevice(commandAnalogConfig, ranges)
 	if err != nil {
 		return fmt.Errorf("Error writing Ain config %s", err)
 	}
@@ -319,13 +307,14 @@ func (ai *analogInput) SetScanRanges() error {
 }
 
 func (ai *analogInput) ScanRanges() ([]byte, error) {
-	var ranges = make([]byte, 8)
-	requestType := libusb.BitmapRequestType(
-		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
-	_, err := ai.DAQ.DeviceHandle.ControlTransfer(
-		requestType, byte(commandAnalogConfig), 0x0, 0x0, ranges, 8, ai.DAQ.Timeout)
+	const bytesInRange = 8
+	var ranges = make([]byte, bytesInRange)
+	bytesRead, err := ai.ReadCommandFromDevice(commandAnalogConfig, ranges)
 	if err != nil {
-		return ranges, fmt.Errorf("Error reading Ain config %s", err)
+		return ranges, fmt.Errorf("Error reading Ain config: %s", err)
+	}
+	if bytesRead != bytesInRange {
+		return ranges, fmt.Errorf("Wrong number of ranges: %s", err)
 	}
 	return ranges, nil
 }
@@ -371,20 +360,6 @@ func round(f float64) int {
 		return 0
 	}
 	return int(f + math.Copysign(0.5, f))
-}
-
-func (daq *usb1608fsplus) SendCommandToDevice(cmd command, data []byte) (int, error) {
-	if data == nil {
-		data = []byte{0}
-	}
-	requestType := libusb.BitmapRequestType(
-		libusb.HostToDevice, libusb.Vendor, libusb.DeviceRecipient)
-	bytesReceived, err := daq.DeviceHandle.ControlTransfer(
-		requestType, byte(cmd), 0x0, 0x0, data, len(data), daq.Timeout)
-	if err != nil {
-		return bytesReceived, fmt.Errorf("Error sending command '%s' to device %s", cmd, err)
-	}
-	return bytesReceived, nil
 }
 
 // ReadAnalogInput reads the value of an analog input channel. This command
