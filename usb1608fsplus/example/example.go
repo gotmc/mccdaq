@@ -14,6 +14,8 @@ import (
 	"github.com/gotmc/mccdaq/usb1608fsplus"
 )
 
+const millisecondDelay = 100
+
 func main() {
 	ctx, err := libusb.Init()
 	if err != nil {
@@ -60,29 +62,28 @@ func main() {
 	* Start the Analog Scan   *
 	**************************/
 
-	// Setup stuff
-	const millisecondDelay = 100
-	splitScansIn := 4
-	totalScans := 512
-	scansPerRead := totalScans / splitScansIn
-	var frequency float64 = 20000.0
-
 	// Create new analog input and ensure the scan is stopped and buffer cleared
+	var frequency float64 = 20000.0
 	ai := daq.NewAnalogInput(frequency)
 	ai.StopScan()
 	time.Sleep(millisecondDelay * time.Millisecond)
 	ai.ClearScanBuffer()
+
 	// Setup the analog input scan
 	ai.TransferMode = usb1608fsplus.BlockTransfer
 	ai.DebugMode = true
 	ai.ConfigureChannel(0, true, 5, "Vin1")
 	ai.SetScanRanges()
+
 	// Read the scan ranges
 	time.Sleep(millisecondDelay * time.Millisecond)
 	scanRanges, err := ai.ScanRanges()
 	log.Printf("Ranges = %v\n", scanRanges)
 
-	// Start the scan
+	// Read the totalScans using splitScansIn number of scans
+	splitScansIn := 2
+	totalScans := 1024
+	scansPerRead := totalScans / splitScansIn
 	ai.StartScan(totalScans)
 	for j := 0; j < splitScansIn; j++ {
 		time.Sleep(millisecondDelay * time.Millisecond)
@@ -90,18 +91,18 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error reading scan: %s", err)
 		}
-		// FIXME(mdr): Are we receiving the correct values when reading multiple
-		// times????
-		for i := 0; i < 8; i += 2 {
-			log.Printf("data[%d:%d] = %d %d\n", i, i+1, data[i+1], data[i])
+		// Print the first 8 bytes and the last 8 bytes of each read
+		bytesToShow := 8
+		for i := 0; i < bytesToShow; i += 2 {
+			log.Printf("data[%d:%d] = 0x%02x%02x\n", i, i+1, data[i+1], data[i])
 		}
-		for i := scansPerRead - 8; i < scansPerRead; i += 2 {
-			log.Printf("data[%d:%d] = %d %d\n", i, i+1, data[i+1], data[i])
+		for i := len(data) - bytesToShow; i < len(data); i += 2 {
+			log.Printf("data[%d:%d] = 0x%02x%02x\n", i, i+1, data[i+1], data[i])
 		}
 		log.Printf("data is %d bytes\n", len(data))
 	}
+	// Stop the analog scan and close the DAQ
 	ai.StopScan()
 	time.Sleep(millisecondDelay * time.Millisecond)
 	daq.Close()
-
 }
