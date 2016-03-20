@@ -106,7 +106,7 @@ func (channels *channels) Enabled() byte {
 // Options returns the analog input scan options byte containing the following
 // bit fields:
 //
-//   Bit 0: Transfer mode (0 = immediate / 1 = bulk)
+//   Bit 0: Transfer mode (0 = block / 1 = immediate)
 //   Bit 1: Pacer output to Sync pin (0 = off / 1 = on) ignored when using an
 //   	      external clock for pacing
 //   Bits 2-4: Trigger settings:
@@ -190,6 +190,7 @@ func (ai *analogInput) StartScan(numScans int) error {
 		freq = 0
 	}
 	data := packScanData(numScans, freq, ai.EnabledChannels(), ai.Options())
+	log.Printf("packScanData = % x", data)
 	if len(data) != 10 {
 		fmt.Errorf("StartAnalogScan data is not 10 bytes long.")
 	}
@@ -221,6 +222,7 @@ func (ai *analogInput) NumEnabledChannels() int {
 // ReadScan reads the analog input data for the given number of scans
 func (ai *analogInput) ReadScan(numScans int) ([]byte, error) {
 	bytesInWord := 2
+	log.Printf("There are %d channels enabled.", ai.NumEnabledChannels())
 	wordsToRead := numScans * ai.NumEnabledChannels()
 	bytesToRead := wordsToRead * bytesInWord
 	var data = make([]byte, bytesToRead)

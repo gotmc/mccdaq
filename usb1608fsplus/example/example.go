@@ -63,7 +63,7 @@ func main() {
 	**************************/
 
 	// Create new analog input and ensure the scan is stopped and buffer cleared
-	var frequency float64 = 20000.0
+	var frequency float64 = 5000.0
 	ai := daq.NewAnalogInput(frequency)
 	ai.StopScan()
 	time.Sleep(millisecondDelay * time.Millisecond)
@@ -73,6 +73,13 @@ func main() {
 	ai.TransferMode = usb1608fsplus.BlockTransfer
 	ai.DebugMode = true
 	ai.ConfigureChannel(0, true, 5, "Vin1")
+	ai.ConfigureChannel(1, true, 5, "Vin2")
+	ai.ConfigureChannel(2, true, 10, "Vin3")
+	ai.ConfigureChannel(3, true, 10, "Vin4")
+	ai.ConfigureChannel(4, true, 1, "Iin1")
+	ai.ConfigureChannel(5, true, 1, "Iin2")
+	ai.ConfigureChannel(6, true, 2, "Iin3")
+	ai.ConfigureChannel(7, true, 2, "Iin4")
 	ai.SetScanRanges()
 
 	// Read the scan ranges
@@ -82,7 +89,7 @@ func main() {
 
 	// Read the totalScans using splitScansIn number of scans
 	const (
-		samplesPerScan = 62
+		samplesPerScan = 8
 		numScans       = 2
 	)
 	ai.StartScan(0)

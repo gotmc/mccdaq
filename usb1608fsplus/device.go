@@ -7,7 +7,6 @@ package usb1608fsplus
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/gotmc/libusb"
@@ -167,26 +166,9 @@ func (daq *usb1608fsplus) ReadCommandFromDevice(cmd command, data []byte) (int, 
 		return bytesReceived, fmt.Errorf("Error reading command '%s' from device: %s", cmd, err)
 	}
 	return bytesReceived, nil
-
 }
 
 func (daq *usb1608fsplus) Read(p []byte) (n int, err error) {
-	log.Printf("Bulk transfer is expecting %d bytes", len(p))
-	if len(p)%maxBulkTransferPacketSize != 0 {
-		packetsNeeded := (len(p) / maxBulkTransferPacketSize) + 1
-		bytesNeeded := packetsNeeded * maxBulkTransferPacketSize
-		data := make([]byte, bytesNeeded)
-		_, err := daq.DeviceHandle.BulkTransfer(
-			daq.BulkEndpoint.EndpointAddress,
-			data,
-			len(data),
-			daq.Timeout,
-		)
-		log.Printf("% x", data[:4])
-		log.Printf("% x", data[len(data)-5:])
-		copy(p, data[:len(p)])
-		return len(p), err
-	}
 	return daq.DeviceHandle.BulkTransfer(
 		daq.BulkEndpoint.EndpointAddress,
 		p,
