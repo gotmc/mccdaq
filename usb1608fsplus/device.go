@@ -7,6 +7,7 @@ package usb1608fsplus
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/gotmc/libusb"
@@ -16,6 +17,7 @@ const (
 	vendorID       = 0x09db
 	productID      = 0x00ea
 	defaultTimeout = 2000
+	msSleepTime    = 500
 )
 
 type DAQer interface {
@@ -114,12 +116,12 @@ func (daq *usb1608fsplus) Close() error {
 	if err != nil {
 		return fmt.Errorf("Error releasing interface %s", err)
 	}
-	time.Sleep(1 * time.Second)
+	time.Sleep(msSleepTime * time.Millisecond)
 	_, err = daq.Reset()
 	if err != nil {
 		return fmt.Errorf("Error reseting USB-1608FS-Plus %s", err)
 	}
-	time.Sleep(1 * time.Second)
+	time.Sleep(msSleepTime * time.Millisecond)
 	daq.DeviceHandle.Close()
 	return nil
 }
@@ -169,6 +171,22 @@ func (daq *usb1608fsplus) ReadCommandFromDevice(cmd command, data []byte) (int, 
 }
 
 func (daq *usb1608fsplus) Read(p []byte) (n int, err error) {
+	log.Printf("Bulk transfer is expecting %d bytes", len(p))
+	if len(p)%maxBulkTransferPacketSize != 0 {
+		packetsNeeded := (len(p) / maxBulkTransferPacketSize) + 1
+		bytesNeeded := packetsNeeded * maxBulkTransferPacketSize
+		data := make([]byte, bytesNeeded)
+		_, err := daq.DeviceHandle.BulkTransfer(
+			daq.BulkEndpoint.EndpointAddress,
+			data,
+			len(data),
+			daq.Timeout,
+		)
+		log.Printf("% x", data[:4])
+		log.Printf("% x", data[len(data)-5:])
+		copy(p, data[:len(p)])
+		return len(p), err
+	}
 	return daq.DeviceHandle.BulkTransfer(
 		daq.BulkEndpoint.EndpointAddress,
 		p,

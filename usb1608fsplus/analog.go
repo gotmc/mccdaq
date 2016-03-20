@@ -238,12 +238,16 @@ func (ai *analogInput) ReadScan(numScans int) ([]byte, error) {
 			data[i+1] = word[1]
 		}
 	} else if ai.TransferMode == BlockTransfer {
+		log.Printf("Block transfer is expecting %d bytes", len(data))
 		bytesReceived, err := ai.Read(data)
+		log.Printf("Block transfer received %d bytes", bytesReceived)
 		if err != nil {
 			return data, fmt.Errorf("Problem with bulk scan %s", err)
 		}
 		if bytesReceived != bytesToRead {
-			return data, fmt.Errorf("Didn't transfer %d bytes %s", bytesToRead, err)
+			log.Printf("Excpected %d bytes but received %d bytes", len(data), bytesReceived)
+			log.Printf("Last few bytes = %d %d %d %d", data[len(data)-4], data[len(data)-3], data[len(data)-2], data[len(data)-1])
+			return data, fmt.Errorf("Didn't transfer %d bytes: %s", bytesToRead, err)
 		}
 	} else {
 		return data, fmt.Errorf("Bad transfer mode")
@@ -254,7 +258,9 @@ func (ai *analogInput) ReadScan(numScans int) ([]byte, error) {
 	}
 	// If bytesToRead is a multiple of wMaxPacketSize the device will send a zero
 	// byte packet.
+	log.Printf("Bulk transfer is multiple of wMaxPacketSize %d", maxBulkTransferPacketSize)
 	if (bytesToRead%maxBulkTransferPacketSize) == 0 && (status&byte(scanRunning) == 0) {
+		log.Printf("Scan is not running so read a few bytes")
 		var data = make([]byte, bytesInWord)
 		_, _ = ai.Read(data)
 	}
