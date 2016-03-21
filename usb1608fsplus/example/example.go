@@ -89,13 +89,13 @@ func main() {
 
 	// Read the totalScans using splitScansIn number of scans
 	const (
-		samplesPerScan = 8
-		numScans       = 2
+		scansPerBuffer = 256
+		totalBuffers   = 10
 	)
 	ai.StartScan(0)
-	for j := 0; j < numScans; j++ {
+	for j := 0; j < totalBuffers; j++ {
 		time.Sleep(millisecondDelay * time.Millisecond)
-		data, err := ai.ReadScan(samplesPerScan)
+		data, err := ai.ReadScan(scansPerBuffer)
 		if err != nil {
 			// Stop the analog scan and close the DAQ
 			ai.StopScan()
@@ -112,9 +112,9 @@ func main() {
 			log.Printf("data[%d:%d] = 0x%02x%02x\n", i, i+1, data[i+1], data[i])
 		}
 		log.Printf("Length of data is %d bytes\n", len(data))
-		time.Sleep(millisecondDelay * time.Millisecond)
 	}
 	// Stop the analog scan and close the DAQ
+	time.Sleep(millisecondDelay * time.Millisecond)
 	ai.StopScan()
 	time.Sleep(millisecondDelay * time.Millisecond)
 	daq.Close()
