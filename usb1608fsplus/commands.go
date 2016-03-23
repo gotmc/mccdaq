@@ -104,6 +104,15 @@ const (
 	Range1V  voltageRange = 0x5 // ±1V
 )
 
+// InputRanges maps the string keys that can be used in a JSON config file to
+// the voltageRange byte values.
+var InputRanges = map[string]voltageRange{
+	"10V": Range10V,
+	"5V":  Range5V,
+	"2V":  Range2V,
+	"1V":  Range1V,
+}
+
 type statusBit byte
 
 // Status bit values

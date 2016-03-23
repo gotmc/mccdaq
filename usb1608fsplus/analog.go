@@ -190,7 +190,6 @@ func (ai *analogInput) StartScan(numScans int) error {
 		freq = 0
 	}
 	data := packScanData(numScans, freq, ai.EnabledChannels(), ai.Options())
-	log.Printf("packScanData = % x", data)
 	if len(data) != 10 {
 		fmt.Errorf("StartAnalogScan data is not 10 bytes long.")
 	}
@@ -222,7 +221,6 @@ func (ai *analogInput) NumEnabledChannels() int {
 // ReadScan reads the analog input data for the given number of scans
 func (ai *analogInput) ReadScan(numScans int) ([]byte, error) {
 	bytesInWord := 2
-	log.Printf("There are %d channels enabled.", ai.NumEnabledChannels())
 	wordsToRead := numScans * ai.NumEnabledChannels()
 	bytesToRead := wordsToRead * bytesInWord
 	var data = make([]byte, bytesToRead)
@@ -240,15 +238,11 @@ func (ai *analogInput) ReadScan(numScans int) ([]byte, error) {
 			data[i+1] = word[1]
 		}
 	} else if ai.TransferMode == BlockTransfer {
-		log.Printf("Block transfer is expecting %d bytes", len(data))
 		bytesReceived, err := ai.Read(data)
-		log.Printf("Block transfer received %d bytes", bytesReceived)
 		if err != nil {
 			return data, fmt.Errorf("Problem with bulk scan %s", err)
 		}
 		if bytesReceived != bytesToRead {
-			log.Printf("Excpected %d bytes but received %d bytes", len(data), bytesReceived)
-			log.Printf("Last few bytes = %d %d %d %d", data[len(data)-4], data[len(data)-3], data[len(data)-2], data[len(data)-1])
 			return data, fmt.Errorf("Didn't transfer %d bytes: %s", bytesToRead, err)
 		}
 	} else {
@@ -260,9 +254,7 @@ func (ai *analogInput) ReadScan(numScans int) ([]byte, error) {
 	}
 	// If bytesToRead is a multiple of wMaxPacketSize the device will send a zero
 	// byte packet.
-	log.Printf("Bulk transfer is multiple of wMaxPacketSize %d", maxBulkTransferPacketSize)
 	if (bytesToRead%maxBulkTransferPacketSize) == 0 && (status&byte(scanRunning) == 0) {
-		log.Printf("Scan is not running so read a few bytes")
 		var data = make([]byte, bytesInWord)
 		_, _ = ai.Read(data)
 	}
@@ -385,28 +377,51 @@ func (daq *usb1608fsplus) ReadAnalogInput(channel int, rng voltageRange) (uint, 
 	return uint(value), nil
 }
 
-func (ai *analogInput) ConfigureChannel(ch int, enabled bool, inputRange int, description string) error {
+// ConfigureEnabledChannel both enables and configures a channel. This is a
+// convenience method for ConfigureChannel that enables the channel.
+func (ai *analogInput) ConfigureEnableChannel(ch int, voltage, description string) error {
+	return ai.ConfigureChannel(ch, true, voltage, description)
+}
 
-	// Verify valid channel number
+// EnableChannel enables the given channel without changing any other channel
+// configuration items.
+func (ai *analogInput) EnableChannel(ch int) {
+	ai.Channels[ch].Enabled = true
+}
+
+// DisableChannel disables the given channel without changing any other channel
+// configuration items.
+func (ai *analogInput) DisableChannel(ch int) {
+	ai.Channels[ch].Enabled = false
+}
+
+// ConfigureChannel configures the given channel setting its input voltage
+// range, description, and whether or not the channel is enabled.
+func (ai *analogInput) ConfigureChannel(
+	ch int, enabled bool, voltage string, description string,
+) error {
+	// Return error if the voltage range is invalid
+	inputRange, ok := InputRanges[voltage]
+	if !ok {
+		return fmt.Errorf("Voltage input range `%s` is invalid.", inputRange)
+	}
+	return ai.configureChannel(ch, enabled, inputRange, description)
+}
+
+// configureChannel configures the given channel like ConfigureChannel but
+// takes a VoltageRange instead of a string for the input voltage range.
+func (ai *analogInput) configureChannel(
+	ch int, enabled bool, voltage voltageRange, description string,
+) error {
+
+	// Return error if the channel is invalid
 	if ch < 0 || ch >= len(ai.Channels) {
 		return fmt.Errorf("Channel %d outside valid range", ch)
 	}
 
-	// Verify valid input voltage range
-	availableRanges := map[int]voltageRange{
-		10: Range10V,
-		5:  Range5V,
-		2:  Range2V,
-		1:  Range1V,
-	}
-	inputVoltageRange, ok := availableRanges[inputRange]
-	if !ok {
-		return fmt.Errorf("Voltage input range %d is invalid.", inputRange)
-	}
-
 	// Configure the channel
 	ai.Channels[ch].Enabled = enabled
-	ai.Channels[ch].Range = inputVoltageRange
+	ai.Channels[ch].Range = voltage
 	ai.Channels[ch].Description = description
 
 	return nil
