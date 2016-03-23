@@ -63,7 +63,7 @@ func main() {
 	**************************/
 
 	// Create new analog input and ensure the scan is stopped and buffer cleared
-	var frequency float64 = 5000.0
+	var frequency float64 = 500.0
 	ai := daq.NewAnalogInput(frequency)
 	ai.StopScan()
 	time.Sleep(millisecondDelay * time.Millisecond)
@@ -72,14 +72,14 @@ func main() {
 	// Setup the analog input scan
 	ai.TransferMode = usb1608fsplus.BlockTransfer
 	ai.DebugMode = true
-	ai.ConfigureChannel(0, true, 5, "Vin1")
-	ai.ConfigureChannel(1, true, 5, "Vin2")
-	ai.ConfigureChannel(2, true, 10, "Vin3")
-	ai.ConfigureChannel(3, true, 10, "Vin4")
-	ai.ConfigureChannel(4, true, 1, "Iin1")
-	ai.ConfigureChannel(5, true, 1, "Iin2")
-	ai.ConfigureChannel(6, true, 2, "Iin3")
-	ai.ConfigureChannel(7, true, 2, "Iin4")
+	ai.ConfigureEnableChannel(0, "5V", "Vin1")
+	ai.ConfigureEnableChannel(1, "5V", "Vin2")
+	ai.ConfigureEnableChannel(2, "10V", "Vin3")
+	ai.ConfigureEnableChannel(3, "10V", "Vin4")
+	ai.ConfigureEnableChannel(4, "1V", "Iin1")
+	ai.ConfigureEnableChannel(5, "1V", "Iin2")
+	ai.ConfigureEnableChannel(6, "2V", "Iin3")
+	ai.ConfigureEnableChannel(7, "2V", "Iin4")
 	ai.SetScanRanges()
 
 	// Read the scan ranges
@@ -92,10 +92,14 @@ func main() {
 		scansPerBuffer = 256
 		totalBuffers   = 10
 	)
+	expectedDuration := (scansPerBuffer * totalBuffers) / frequency
 	ai.StartScan(0)
+	start := time.Now()
+	totalBytesRead := 0
 	for j := 0; j < totalBuffers; j++ {
-		time.Sleep(millisecondDelay * time.Millisecond)
+		// time.Sleep(millisecondDelay * time.Millisecond)
 		data, err := ai.ReadScan(scansPerBuffer)
+		totalBytesRead += len(data)
 		if err != nil {
 			// Stop the analog scan and close the DAQ
 			ai.StopScan()
@@ -113,6 +117,10 @@ func main() {
 		}
 		log.Printf("Length of data is %d bytes\n", len(data))
 	}
+	elapsed := time.Since(start)
+	log.Printf("Reading %d bytes took %.2f s", totalBytesRead, elapsed.Seconds())
+	log.Printf("Anticipated reading %d bytes to take %.2f s",
+		scansPerBuffer*totalBuffers*ai.NumEnabledChannels()*2, expectedDuration)
 	// Stop the analog scan and close the DAQ
 	time.Sleep(millisecondDelay * time.Millisecond)
 	ai.StopScan()
