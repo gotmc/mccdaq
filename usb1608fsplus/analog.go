@@ -223,6 +223,9 @@ func (ai *analogInput) ReadScan(numScans int) ([]byte, error) {
 	bytesInWord := 2
 	wordsToRead := numScans * ai.NumEnabledChannels()
 	bytesToRead := wordsToRead * bytesInWord
+	if (bytesToRead % maxBulkTransferPacketSize) != 0 {
+		return nil, fmt.Errorf("Bytes to read not a multiple of maxBulkTransferPacketSize")
+	}
 	var data = make([]byte, bytesToRead)
 	if ai.TransferMode == ImmediateTransfer {
 		for i := 0; i < wordsToRead; i++ {
