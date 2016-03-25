@@ -20,12 +20,12 @@ func byteSlice(i int) []byte {
 
 // BlinkLED blinks the LED the given number of times. Note, the LED starts
 // being unlit, but will end being lit.
-func (daq *usb1608fsplus) BlinkLED(count int) (int, error) {
+func (daq *usb1608fsplus) BlinkLED(blinks int) (int, error) {
 	requestType := libusb.BitmapRequestType(
 		libusb.HostToDevice, libusb.Vendor, libusb.DeviceRecipient)
-	// data := byteSlice(count)
+	// data := byteSlice(blinks)
 	data := make([]byte, 1)
-	data[0] = byte(count)
+	data[0] = byte(blinks)
 
 	ret, err := daq.DeviceHandle.ControlTransfer(
 		requestType, byte(commandBlinkLED), 0x0, 0x0, data, len(data), daq.Timeout)
