@@ -7,6 +7,7 @@ package usb1608fsplus
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -20,33 +21,93 @@ const (
 )
 
 type Channel struct {
-	Enabled     bool
-	Range       VoltageRange
-	Description string
+	Enabled     bool         `json:"enabled"`
+	Range       VoltageRange `json:"range"`
+	Description string       `json:"desc"`
 }
 
 type Channels [8]Channel
 
 type AnalogInput struct {
-	DAQer
-	Frequency         float64
-	TransferMode      TransferMode
-	Trigger           TriggerType
-	UseExternalPacer  bool
-	OutputPacerOnSync bool
-	DebugMode         bool
-	Stall             Stall
-	Channels          Channels
+	DAQer             `json:"-"`
+	Frequency         float64      `json:"freq"`
+	TransferMode      TransferMode `json:"block_transfer"`
+	Trigger           TriggerType  `json:"trigger"`
+	UseExternalPacer  bool         `json:"ext_pacer"`
+	OutputPacerOnSync bool         `json:"output_sync"`
+	DebugMode         bool         `json:"debug_mode"`
+	Stall             Stall        `json:"stall_overrun"`
+	Channels          Channels     `json:"channels"`
 }
 
-func (daq *usb1608fsplus) NewAnalogInput(freq float64) *AnalogInput {
+func (st *Stall) UnmarshalJSON(data []byte) error {
+	// Extract the boolean from data.
+	var stall bool
+	if err := json.Unmarshal(data, &stall); err != nil {
+		return fmt.Errorf("stall should be a boolean, got %s", data)
+	}
+
+	if stall {
+		*st = StallOnOverrun
+	} else {
+		*st = StallInhibited
+	}
+	return nil
+}
+
+func (mode *TransferMode) UnmarshalJSON(data []byte) error {
+	// Extract the boolean from data.
+	var block bool
+	if err := json.Unmarshal(data, &block); err != nil {
+		return fmt.Errorf("block_transfer should be a boolean, got %s", data)
+	}
+
+	if block {
+		*mode = BlockTransfer
+	} else {
+		*mode = ImmediateTransfer
+	}
+	return nil
+}
+
+func (voltage *VoltageRange) UnmarshalJSON(data []byte) error {
+	// Extract the string from data.
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return fmt.Errorf("range should be a string, got %s", data)
+	}
+
+	got, ok := InputRanges[s]
+	if !ok {
+		return fmt.Errorf("Invalid VoltageRange %q", s)
+	}
+	*voltage = got
+	return nil
+}
+
+func (trigger *TriggerType) UnmarshalJSON(data []byte) error {
+	// Extract the string from data.
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return fmt.Errorf("range should be a string, got %s", data)
+	}
+
+	got, ok := TriggerTypes[s]
+	if !ok {
+		return fmt.Errorf("Invalid TriggerType %q", s)
+	}
+	*trigger = got
+	return nil
+}
+
+func (daq *usb1608fsplus) NewAnalogInput() *AnalogInput {
 	var channels [8]Channel
 	for i := 0; i < len(channels); i++ {
 		channels[i].Range = Range10V
 	}
 	analogInput := AnalogInput{
 		DAQer:             daq,
-		Frequency:         freq,
+		Frequency:         defaultFrequency,
 		TransferMode:      BlockTransfer,
 		Trigger:           NoExternalTrigger,
 		UseExternalPacer:  false,
@@ -81,6 +142,14 @@ const (
 	HighLevelTrigger   TriggerType = 0x3
 	LowLevelTrigger    TriggerType = 0x4
 )
+
+var TriggerTypes = map[string]TriggerType{
+	"none":    NoExternalTrigger,
+	"rising":  RisingEdgeTrigger,
+	"falling": FallingEdgeTrigger,
+	"high":    HighLevelTrigger,
+	"low":     LowLevelTrigger,
+}
 
 type Stall byte
 

@@ -6,7 +6,10 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"time"
 
@@ -63,24 +66,22 @@ func main() {
 	**************************/
 
 	// Create new analog input and ensure the scan is stopped and buffer cleared
-	var frequency float64 = 10000.0
-	ai := daq.NewAnalogInput(frequency)
+	ai := daq.NewAnalogInput()
 	ai.StopScan()
 	time.Sleep(millisecondDelay * time.Millisecond)
 	ai.ClearScanBuffer()
 
 	// Setup the analog input scan
-	ai.TransferMode = usb1608fsplus.BlockTransfer
-	ai.DebugMode = true
-	ai.ConfigureEnableChannel(0, "5V", "Vin1")
-	ai.ConfigureEnableChannel(1, "5V", "Vin2")
-	ai.ConfigureEnableChannel(2, "10V", "Vin3")
-	ai.ConfigureEnableChannel(3, "10V", "Vin4")
-	ai.ConfigureEnableChannel(4, "1V", "Iin1")
-	ai.ConfigureEnableChannel(5, "1V", "Iin2")
-	ai.ConfigureEnableChannel(6, "2V", "Iin3")
-	ai.ConfigureEnableChannel(7, "2V", "Iin4")
+	configData, err := ioutil.ReadFile("./analog_config.json")
+	if err != nil {
+		log.Fatalf("Error reading the USB-1608FS-Plus JSON config file")
+	}
+	dec := json.NewDecoder(bytes.NewReader(configData))
+	if err := dec.Decode(&ai); err != nil {
+		log.Fatalf("parse USB-1608FS-Plus: %v", err)
+	}
 	ai.SetScanRanges()
+	log.Printf("Frequency = %f Hz", ai.Frequency)
 
 	// Read the scan ranges
 	time.Sleep(millisecondDelay * time.Millisecond)
@@ -92,7 +93,7 @@ func main() {
 		scansPerBuffer = 256
 		totalBuffers   = 10
 	)
-	expectedDuration := (scansPerBuffer * totalBuffers) / frequency
+	expectedDuration := (scansPerBuffer * totalBuffers) / ai.Frequency
 	ai.StartScan(0)
 	start := time.Now()
 	totalBytesRead := 0

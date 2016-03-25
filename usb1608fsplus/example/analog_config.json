@@ -1,0 +1,19 @@
+{
+  "freq": 10000,
+  "block_transfer": true,
+  "trigger": "none",
+  "ext_pacer": false,
+  "output_sync": false,
+  "debug_mode": true,
+  "stall_overrun": true,
+  "channels": [
+    {"enabled": true, "range": "5V", "desc": "Vin1"},
+    {"enabled": true, "range": "5V", "desc": "Vin2"},
+    {"enabled": true, "range": "10V", "desc": "Vin3"},
+    {"enabled": true, "range": "10V", "desc": "Vin4"},
+    {"enabled": true, "range": "10V", "desc": "Iin1"},
+    {"enabled": true, "range": "10V", "desc": "Iin2"},
+    {"enabled": true, "range": "10V", "desc": "N/A"},
+    {"enabled": true, "range": "10V", "desc": "N/A"}
+  ]
+}
