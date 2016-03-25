@@ -16,6 +16,7 @@ const (
 	vendorID       = 0x09db
 	productID      = 0x00ea
 	defaultTimeout = 2000
+	msSleepTime    = 500
 )
 
 type DAQer interface {
@@ -114,12 +115,12 @@ func (daq *usb1608fsplus) Close() error {
 	if err != nil {
 		return fmt.Errorf("Error releasing interface %s", err)
 	}
-	time.Sleep(1 * time.Second)
+	time.Sleep(msSleepTime * time.Millisecond)
 	_, err = daq.Reset()
 	if err != nil {
 		return fmt.Errorf("Error reseting USB-1608FS-Plus %s", err)
 	}
-	time.Sleep(1 * time.Second)
+	time.Sleep(msSleepTime * time.Millisecond)
 	daq.DeviceHandle.Close()
 	return nil
 }
@@ -165,7 +166,6 @@ func (daq *usb1608fsplus) ReadCommandFromDevice(cmd command, data []byte) (int, 
 		return bytesReceived, fmt.Errorf("Error reading command '%s' from device: %s", cmd, err)
 	}
 	return bytesReceived, nil
-
 }
 
 func (daq *usb1608fsplus) Read(p []byte) (n int, err error) {

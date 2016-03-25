@@ -16,7 +16,7 @@ import (
 
 const (
 	maxFrequency     = 500000
-	defaultFrequency = 5000
+	defaultFrequency = 10000
 )
 
 type channel struct {
@@ -106,7 +106,7 @@ func (channels *channels) Enabled() byte {
 // Options returns the analog input scan options byte containing the following
 // bit fields:
 //
-//   Bit 0: Transfer mode (0 = immediate / 1 = bulk)
+//   Bit 0: Transfer mode (0 = block / 1 = immediate)
 //   Bit 1: Pacer output to Sync pin (0 = off / 1 = on) ignored when using an
 //   	      external clock for pacing
 //   Bits 2-4: Trigger settings:
@@ -223,6 +223,9 @@ func (ai *analogInput) ReadScan(numScans int) ([]byte, error) {
 	bytesInWord := 2
 	wordsToRead := numScans * ai.NumEnabledChannels()
 	bytesToRead := wordsToRead * bytesInWord
+	if (bytesToRead % maxBulkTransferPacketSize) != 0 {
+		return nil, fmt.Errorf("Bytes to read not a multiple of maxBulkTransferPacketSize")
+	}
 	var data = make([]byte, bytesToRead)
 	if ai.TransferMode == ImmediateTransfer {
 		for i := 0; i < wordsToRead; i++ {
@@ -243,7 +246,7 @@ func (ai *analogInput) ReadScan(numScans int) ([]byte, error) {
 			return data, fmt.Errorf("Problem with bulk scan %s", err)
 		}
 		if bytesReceived != bytesToRead {
-			return data, fmt.Errorf("Didn't transfer %d bytes %s", bytesToRead, err)
+			return data, fmt.Errorf("Didn't transfer %d bytes: %s", bytesToRead, err)
 		}
 	} else {
 		return data, fmt.Errorf("Bad transfer mode")
@@ -377,28 +380,51 @@ func (daq *usb1608fsplus) ReadAnalogInput(channel int, rng voltageRange) (uint, 
 	return uint(value), nil
 }
 
-func (ai *analogInput) ConfigureChannel(ch int, enabled bool, inputRange int, description string) error {
+// ConfigureEnabledChannel both enables and configures a channel. This is a
+// convenience method for ConfigureChannel that enables the channel.
+func (ai *analogInput) ConfigureEnableChannel(ch int, voltage, description string) error {
+	return ai.ConfigureChannel(ch, true, voltage, description)
+}
 
-	// Verify valid channel number
+// EnableChannel enables the given channel without changing any other channel
+// configuration items.
+func (ai *analogInput) EnableChannel(ch int) {
+	ai.Channels[ch].Enabled = true
+}
+
+// DisableChannel disables the given channel without changing any other channel
+// configuration items.
+func (ai *analogInput) DisableChannel(ch int) {
+	ai.Channels[ch].Enabled = false
+}
+
+// ConfigureChannel configures the given channel setting its input voltage
+// range, description, and whether or not the channel is enabled.
+func (ai *analogInput) ConfigureChannel(
+	ch int, enabled bool, voltage string, description string,
+) error {
+	// Return error if the voltage range is invalid
+	inputRange, ok := InputRanges[voltage]
+	if !ok {
+		return fmt.Errorf("Voltage input range `%s` is invalid.", inputRange)
+	}
+	return ai.configureChannel(ch, enabled, inputRange, description)
+}
+
+// configureChannel configures the given channel like ConfigureChannel but
+// takes a VoltageRange instead of a string for the input voltage range.
+func (ai *analogInput) configureChannel(
+	ch int, enabled bool, voltage voltageRange, description string,
+) error {
+
+	// Return error if the channel is invalid
 	if ch < 0 || ch >= len(ai.Channels) {
 		return fmt.Errorf("Channel %d outside valid range", ch)
 	}
 
-	// Verify valid input voltage range
-	availableRanges := map[int]voltageRange{
-		10: Range10V,
-		5:  Range5V,
-		2:  Range2V,
-		1:  Range1V,
-	}
-	inputVoltageRange, ok := availableRanges[inputRange]
-	if !ok {
-		return fmt.Errorf("Voltage input range %d is invalid.", inputRange)
-	}
-
 	// Configure the channel
 	ai.Channels[ch].Enabled = enabled
-	ai.Channels[ch].Range = inputVoltageRange
+	ai.Channels[ch].Range = voltage
 	ai.Channels[ch].Description = description
 
 	return nil
