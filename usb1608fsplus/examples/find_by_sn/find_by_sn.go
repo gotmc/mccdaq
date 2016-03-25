@@ -37,6 +37,10 @@ func main() {
 	log.Printf("Bulk endpoint address = 0x%x (%b)\n",
 		daq.BulkEndpoint.EndpointAddress, daq.BulkEndpoint.EndpointAddress)
 
+	// Get status
+	status, err := daq.Status()
+	log.Printf("Status = %v", status)
+
 	// Close the DAQ
 	time.Sleep(millisecondDelay * time.Millisecond)
 	daq.Close()

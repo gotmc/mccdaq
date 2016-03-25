@@ -8,7 +8,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"time"
@@ -26,35 +25,18 @@ func main() {
 	}
 	defer ctx.Exit()
 
-	// Create the USB-1608FS-Plus DAQ device
-	daq, err := usb1608fsplus.NewViaSN(ctx, "01ACD31D")
+	// Find the first USB fevice with the VendorID and ProductID matching the MCC
+	// USB-1608FS-Plus DAQ
+	daq, err := usb1608fsplus.GetFirstDevice(ctx)
 	if err != nil {
-		log.Fatalf("Something bad getting S/N happened: %s", err)
+		log.Fatalf("Couldn't find a USB-1608FS-Plus: %s", err)
 	}
-	// If you just want to grab the first USB-1608FS-Plus that's attached, you
-	// can use:
-	// daq, err := usb1608fsplus.GetFirstDevice(ctx)
 
 	// Print some info about the device
 	log.Printf("Vendor ID = 0x%x / Product ID = 0x%x\n", daq.DeviceDescriptor.VendorID,
 		daq.DeviceDescriptor.ProductID)
 	serialNumber, err := daq.SerialNumber()
 	log.Printf("Serial number via control transfer = %s", serialNumber)
-	log.Printf("USB ConfigurationIndex = %d\n", daq.ConfigDescriptor.ConfigurationIndex)
-	log.Printf("Bulk endpoint address = 0x%x (%b)\n",
-		daq.BulkEndpoint.EndpointAddress, daq.BulkEndpoint.EndpointAddress)
-
-	// Test blinking the LED
-	numBlinks := 5
-	actualBlinks, err := daq.BlinkLED(numBlinks)
-	if err != nil {
-		fmt.Errorf("Error blinking LED %s", err)
-	}
-	log.Printf("Sent %d byte of data to blink LED %d times.", actualBlinks, numBlinks)
-
-	// Get status
-	status, err := daq.Status()
-	log.Printf("Status = %v", status)
 
 	// Read the calibration memory to setup the gain table
 	gainTable, _ := daq.BuildGainTable()
