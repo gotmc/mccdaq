@@ -94,19 +94,19 @@ const (
 	maxBulkTransferPacketSize      = 64
 )
 
-type voltageRange byte
+type VoltageRange byte
 
 // Ranges
 const (
-	Range10V voltageRange = 0x0 // ±10V
-	Range5V  voltageRange = 0x1 // ±5V
-	Range2V  voltageRange = 0x3 // ±2V
-	Range1V  voltageRange = 0x5 // ±1V
+	Range10V VoltageRange = 0x0 // ±10V
+	Range5V  VoltageRange = 0x1 // ±5V
+	Range2V  VoltageRange = 0x3 // ±2V
+	Range1V  VoltageRange = 0x5 // ±1V
 )
 
 // InputRanges maps the string keys that can be used in a JSON config file to
-// the voltageRange byte values.
-var InputRanges = map[string]voltageRange{
+// the VoltageRange byte values.
+var InputRanges = map[string]VoltageRange{
 	"10V": Range10V,
 	"5V":  Range5V,
 	"2V":  Range2V,

@@ -64,7 +64,7 @@ func TestSetScanRanges(t *testing.T) {
 		Stall:             StallInhibited,
 	}
 	for i, givenRange := range givenRanges {
-		ai.Channels[i].Range = voltageRange(givenRange)
+		ai.Channels[i].Range = VoltageRange(givenRange)
 	}
 	c.Convey("Given the need to set the scan ranges in the DAQ", t, func() {
 		c.Convey("When the SetScanRanges() method is called", func() {

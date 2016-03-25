@@ -21,7 +21,7 @@ const (
 
 type Channel struct {
 	Enabled     bool
-	Range       voltageRange
+	Range       VoltageRange
 	Description string
 }
 
@@ -367,7 +367,7 @@ func round(f float64) int {
 
 // ReadAnalogInput reads the value of an analog input channel. This command
 // will result in a bus stall if an AInScan is currenty running.
-func (daq *usb1608fsplus) ReadAnalogInput(channel int, rng voltageRange) (uint, error) {
+func (daq *usb1608fsplus) ReadAnalogInput(channel int, rng VoltageRange) (uint, error) {
 	requestType := libusb.BitmapRequestType(
 		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
 	data := make([]byte, 2)
@@ -414,7 +414,7 @@ func (ai *AnalogInput) ConfigureChannel(
 // configureChannel configures the given channel like ConfigureChannel but
 // takes a VoltageRange instead of a string for the input voltage range.
 func (ai *AnalogInput) configureChannel(
-	ch int, enabled bool, voltage voltageRange, description string,
+	ch int, enabled bool, voltage VoltageRange, description string,
 ) error {
 
 	// Return error if the channel is invalid
