@@ -16,7 +16,7 @@ import (
 
 const (
 	maxFrequency     = 500000
-	defaultFrequency = 5000
+	defaultFrequency = 10000
 )
 
 type channel struct {

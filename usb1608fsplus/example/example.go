@@ -63,7 +63,7 @@ func main() {
 	**************************/
 
 	// Create new analog input and ensure the scan is stopped and buffer cleared
-	var frequency float64 = 500.0
+	var frequency float64 = 10000.0
 	ai := daq.NewAnalogInput(frequency)
 	ai.StopScan()
 	time.Sleep(millisecondDelay * time.Millisecond)
