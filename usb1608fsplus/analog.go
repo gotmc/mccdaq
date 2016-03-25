@@ -19,15 +19,15 @@ const (
 	defaultFrequency = 10000
 )
 
-type channel struct {
+type Channel struct {
 	Enabled     bool
 	Range       voltageRange
 	Description string
 }
 
-type channels [8]channel
+type Channels [8]Channel
 
-type analogInput struct {
+type AnalogInput struct {
 	DAQer
 	Frequency         float64
 	TransferMode      TransferMode
@@ -36,15 +36,15 @@ type analogInput struct {
 	OutputPacerOnSync bool
 	DebugMode         bool
 	Stall             Stall
-	Channels          channels
+	Channels          Channels
 }
 
-func (daq *usb1608fsplus) NewAnalogInput(freq float64) *analogInput {
-	var channels [8]channel
+func (daq *usb1608fsplus) NewAnalogInput(freq float64) *AnalogInput {
+	var channels [8]Channel
 	for i := 0; i < len(channels); i++ {
 		channels[i].Range = Range10V
 	}
-	analogInput := analogInput{
+	analogInput := AnalogInput{
 		DAQer:             daq,
 		Frequency:         freq,
 		TransferMode:      BlockTransfer,
@@ -89,11 +89,11 @@ const (
 	StallInhibited Stall = 0x1
 )
 
-func (ai *analogInput) EnabledChannels() byte {
+func (ai *AnalogInput) EnabledChannels() byte {
 	return ai.Channels.Enabled()
 }
 
-func (channels *channels) Enabled() byte {
+func (channels *Channels) Enabled() byte {
 	var enabledChannels byte
 	for i, channel := range channels {
 		if channel.Enabled {
@@ -119,7 +119,7 @@ func (channels *channels) Enabled() byte {
 //            0 = off; output A/D data
 //            1 = on; output incrementing counter
 //   Bit 7: Stall on bulk endpoint overrun (0 = no / 1 = yes)
-func (ai *analogInput) Options() byte {
+func (ai *AnalogInput) Options() byte {
 	transferMode := byte(ai.TransferMode)
 	pacer := byte(InternalPacerOff)
 	if ai.OutputPacerOnSync {
@@ -184,7 +184,7 @@ func (ai *analogInput) Options() byte {
 	 scan.  The host may read the status to verify and clear the stall condition
    before further scan can be performed.
 */
-func (ai *analogInput) StartScan(numScans int) error {
+func (ai *AnalogInput) StartScan(numScans int) error {
 	freq := ai.Frequency
 	if ai.UseExternalPacer {
 		freq = 0
@@ -208,7 +208,7 @@ func (ai *analogInput) StartScan(numScans int) error {
 	return nil
 }
 
-func (ai *analogInput) NumEnabledChannels() int {
+func (ai *AnalogInput) NumEnabledChannels() int {
 	numEnabledChannels := 0
 	for _, channel := range ai.Channels {
 		if channel.Enabled {
@@ -219,7 +219,7 @@ func (ai *analogInput) NumEnabledChannels() int {
 }
 
 // ReadScan reads the analog input data for the given number of scans
-func (ai *analogInput) ReadScan(numScans int) ([]byte, error) {
+func (ai *AnalogInput) ReadScan(numScans int) ([]byte, error) {
 	bytesInWord := 2
 	wordsToRead := numScans * ai.NumEnabledChannels()
 	bytesToRead := wordsToRead * bytesInWord
@@ -271,12 +271,12 @@ func (ai *analogInput) ReadScan(numScans int) ([]byte, error) {
 }
 
 // Close stops the analog input scan if running.
-func (ai *analogInput) Close() error {
+func (ai *AnalogInput) Close() error {
 	return ai.StopScan()
 }
 
 // StopAnalogScan stops the analog input scan if running.
-func (ai *analogInput) StopScan() error {
+func (ai *AnalogInput) StopScan() error {
 	_, err := ai.SendCommandToDevice(commandAnalogStopScan, nil)
 	if err != nil {
 		return fmt.Errorf("Error stopping analog input scan %s", err)
@@ -285,7 +285,7 @@ func (ai *analogInput) StopScan() error {
 }
 
 // ClearScanBuffer clears the internal scan endpoint FIFO buffer
-func (ai *analogInput) ClearScanBuffer() error {
+func (ai *AnalogInput) ClearScanBuffer() error {
 	_, err := ai.SendCommandToDevice(commandAnalogClearBuffer, nil)
 	if err != nil {
 		return fmt.Errorf("Error clearing analog input scan FIFO buffer %s", err)
@@ -294,7 +294,7 @@ func (ai *analogInput) ClearScanBuffer() error {
 }
 
 // SetScanRanges writes the scan ranges to the USB-1608FS-Plus
-func (ai *analogInput) SetScanRanges() error {
+func (ai *AnalogInput) SetScanRanges() error {
 	ranges := make([]byte, 8)
 	for i, channel := range ai.Channels {
 		ranges[i] = byte(channel.Range)
@@ -309,7 +309,7 @@ func (ai *analogInput) SetScanRanges() error {
 	return nil
 }
 
-func (ai *analogInput) ScanRanges() ([]byte, error) {
+func (ai *AnalogInput) ScanRanges() ([]byte, error) {
 	const bytesInRange = 8
 	var ranges = make([]byte, bytesInRange)
 	bytesRead, err := ai.ReadCommandFromDevice(commandAnalogConfig, ranges)
@@ -382,25 +382,25 @@ func (daq *usb1608fsplus) ReadAnalogInput(channel int, rng voltageRange) (uint, 
 
 // ConfigureEnabledChannel both enables and configures a channel. This is a
 // convenience method for ConfigureChannel that enables the channel.
-func (ai *analogInput) ConfigureEnableChannel(ch int, voltage, description string) error {
+func (ai *AnalogInput) ConfigureEnableChannel(ch int, voltage, description string) error {
 	return ai.ConfigureChannel(ch, true, voltage, description)
 }
 
 // EnableChannel enables the given channel without changing any other channel
 // configuration items.
-func (ai *analogInput) EnableChannel(ch int) {
+func (ai *AnalogInput) EnableChannel(ch int) {
 	ai.Channels[ch].Enabled = true
 }
 
 // DisableChannel disables the given channel without changing any other channel
 // configuration items.
-func (ai *analogInput) DisableChannel(ch int) {
+func (ai *AnalogInput) DisableChannel(ch int) {
 	ai.Channels[ch].Enabled = false
 }
 
 // ConfigureChannel configures the given channel setting its input voltage
 // range, description, and whether or not the channel is enabled.
-func (ai *analogInput) ConfigureChannel(
+func (ai *AnalogInput) ConfigureChannel(
 	ch int, enabled bool, voltage string, description string,
 ) error {
 	// Return error if the voltage range is invalid
@@ -413,7 +413,7 @@ func (ai *analogInput) ConfigureChannel(
 
 // configureChannel configures the given channel like ConfigureChannel but
 // takes a VoltageRange instead of a string for the input voltage range.
-func (ai *analogInput) configureChannel(
+func (ai *AnalogInput) configureChannel(
 	ch int, enabled bool, voltage voltageRange, description string,
 ) error {
 

@@ -53,7 +53,7 @@ func (f *FakeDAQer) Status() (byte, error) {
 func TestSetScanRanges(t *testing.T) {
 	givenRanges := [...]byte{0x0, 0x0, 0x1, 0x1, 0x3, 0x3, 0x5, 0x5}
 	f := FakeDAQer{}
-	ai := analogInput{
+	ai := AnalogInput{
 		DAQer:             &f,
 		Frequency:         500,
 		TransferMode:      ImmediateTransfer,
