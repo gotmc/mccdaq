@@ -59,9 +59,17 @@ func main() {
 		log.Fatalf("Error reading the USB-1608FS-Plus JSON config file")
 	}
 	dec := json.NewDecoder(bytes.NewReader(configData))
-	if err := dec.Decode(&ai); err != nil {
+	var configJSON = struct {
+		*usb1608fsplus.AnalogInput `json:"analog_input"`
+	}{
+		ai,
+	}
+	if err := dec.Decode(&configJSON); err != nil {
 		log.Fatalf("parse USB-1608FS-Plus: %v", err)
 	}
+	log.Printf("ai = %v", ai)
+	log.Printf("ai.Frequency = %f Hz", ai.Frequency)
+	log.Printf("ai.Channels[7].Range= %v", ai.Channels[7].Range)
 	ai.SetScanRanges()
 	log.Printf("Frequency = %f Hz", ai.Frequency)
 
