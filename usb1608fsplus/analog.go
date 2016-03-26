@@ -70,21 +70,29 @@ func (mode *TransferMode) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (voltage *VoltageRange) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the Unmarshaler interface for VoltageRange by
+// taking a string that matches a key in the InputRanges map and finding the
+// appropriate VoltageRange value.
+func (vr *VoltageRange) UnmarshalJSON(data []byte) error {
 	// Extract the string from data.
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
 		return fmt.Errorf("range should be a string, got %s", data)
 	}
 
+	// Ensure the provided string matches one of the keys in the map
 	got, ok := InputRanges[s]
 	if !ok {
 		return fmt.Errorf("Invalid VoltageRange %q", s)
 	}
-	*voltage = got
+	// Set the voltage range to the value found in the map per the key
+	*vr = got
 	return nil
 }
 
+// UnmarshalJSON implements the Unmarshaler interface for TriggerType by taking
+// a string that matches a key in the TriggerTypes map and finding the
+// appropriate TriggerType value.
 func (trigger *TriggerType) UnmarshalJSON(data []byte) error {
 	// Extract the string from data.
 	var s string
@@ -100,6 +108,7 @@ func (trigger *TriggerType) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// NewAnalogInput is used to create a new AnalogInput for the given DAQer.
 func (daq *usb1608fsplus) NewAnalogInput() *AnalogInput {
 	var channels [8]Channel
 	for i := 0; i < len(channels); i++ {
@@ -344,7 +353,7 @@ func (ai *AnalogInput) Close() error {
 	return ai.StopScan()
 }
 
-// StopAnalogScan stops the analog input scan if running.
+// StopAnalogScan stops the USB-1608FS-Plus's analog input scan if running.
 func (ai *AnalogInput) StopScan() error {
 	_, err := ai.SendCommandToDevice(commandAnalogStopScan, nil)
 	if err != nil {
@@ -378,6 +387,8 @@ func (ai *AnalogInput) SetScanRanges() error {
 	return nil
 }
 
+// ScanRanges reads the scan ranges (i.e., input voltage ranges for the analog
+// inputs) from the USB-1608FS-Plus.
 func (ai *AnalogInput) ScanRanges() ([]byte, error) {
 	const bytesInRange = 8
 	var ranges = make([]byte, bytesInRange)
@@ -391,6 +402,8 @@ func (ai *AnalogInput) ScanRanges() ([]byte, error) {
 	return ranges, nil
 }
 
+// packScanData creates the 10 byte configuration information needed by
+// StartScan.
 func packScanData(numScans int, frequency float64, channels byte, options byte) []byte {
 	// FIXME(mdr): I should probably use binary.Write() instead of using the
 	// brute force method. <https://golang.org/pkg/encoding/binary/#example_Write_multi>
