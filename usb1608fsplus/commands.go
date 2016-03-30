@@ -98,10 +98,14 @@ type VoltageRange byte
 
 // Ranges
 const (
-	Range10V VoltageRange = 0x0 // ±10V
-	Range5V  VoltageRange = 0x1 // ±5V
-	Range2V  VoltageRange = 0x3 // ±2V
-	Range1V  VoltageRange = 0x5 // ±1V
+	Range10V    VoltageRange = 0x0 // ±10V
+	Range5V     VoltageRange = 0x1 // ±5V
+	Range2_5V   VoltageRange = 0x2 // ±2.5V
+	Range2V     VoltageRange = 0x3 // ±2V
+	Range1_25V  VoltageRange = 0x4 // ±1.25V
+	Range1V     VoltageRange = 0x5 // ±1V
+	Range_625V  VoltageRange = 0x6 // ±0.625V
+	Range_3125V VoltageRange = 0x7 // ±0.3125V
 )
 
 // InputRanges maps the string keys that can be used in a JSON config file to
