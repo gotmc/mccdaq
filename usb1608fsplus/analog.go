@@ -18,6 +18,7 @@ import (
 const (
 	maxFrequency     = 500000
 	defaultFrequency = 10000
+	bytesPerWord     = 2
 )
 
 type Channel struct {
@@ -515,4 +516,25 @@ func (ai *AnalogInput) configureChannel(
 	ai.Channels[ch].Description = description
 
 	return nil
+}
+
+func (ai *AnalogInput) RawVoltages(data []byte) ([][]float64, error) {
+	if len(data)%(bytesPerWord*len(ai.Channels)) != 0 {
+		return nil, fmt.Errorf("data len must be multiple of 2 bytes x 8 channels")
+	}
+	scans := len(data) / (bytesPerWord * len(ai.Channels))
+	rawVoltages := make([][]float64, len(ai.Channels))
+	for i := range ai.Channels {
+		rawVoltages[i] = make([]float64, scans)
+	}
+	word := 0
+	for scan := 0; scan < scans; scan++ {
+		for i, ch := range ai.Channels {
+			firstByte := word * bytesPerWord
+			raw := volts(data[firstByte:firstByte+2], ch.Range)
+			rawVoltages[i][scan] = raw
+			word++
+		}
+	}
+	return rawVoltages, nil
 }
