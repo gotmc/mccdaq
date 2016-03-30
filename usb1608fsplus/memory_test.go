@@ -66,7 +66,7 @@ func TestConvertBytesToFloat(t *testing.T) {
 	}
 	c.Convey("Given the need to convert IEEE 754 4-byte numbers", t, func() {
 		for _, testCase := range testCases {
-			conveyance := fmt.Sprintf("When given the 4 bytes: %x", testCase.data)
+			conveyance := fmt.Sprintf("When given the 4 bytes: %#x", testCase.data)
 			c.Convey(conveyance, func() {
 				conveyance := fmt.Sprintf("Then the value should be %f", testCase.output)
 				c.Convey(conveyance, func() {

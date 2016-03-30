@@ -101,7 +101,12 @@ func main() {
 		// Print the first 8 bytes and the last 8 bytes of each read
 		bytesToShow := 8
 		for i := 0; i < bytesToShow; i += 2 {
-			log.Printf("data[%d:%d] = 0x%02x%02x\n", i, i+1, data[i+1], data[i])
+			raw, err := usb1608fsplus.Volts(data[i:i+2], usb1608fsplus.Range10V)
+			if err != nil {
+				log.Printf("data[%d:%d] = 0x%02x%02x (Error: %s)\n", i, i+1, data[i+1], data[i], err)
+			} else {
+				log.Printf("data[%d:%d] = 0x%02x%02x (%.5f Vraw)\n", i, i+1, data[i+1], data[i], raw)
+			}
 		}
 		for i := len(data) - bytesToShow; i < len(data); i += 2 {
 			log.Printf("data[%d:%d] = 0x%02x%02x\n", i, i+1, data[i+1], data[i])

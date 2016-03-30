@@ -113,6 +113,24 @@ var InputRanges = map[string]VoltageRange{
 	"1V":  Range1V,
 }
 
+var voltageRanges = map[VoltageRange]string{
+	Range10V: "±10V",
+	Range5V:  "±5V",
+	Range2V:  "±2V",
+	Range1V:  "±1V",
+}
+
+func (v VoltageRange) String() string {
+	return voltageRanges[v]
+}
+
+var VoltageMultiplier = map[VoltageRange]float64{
+	Range10V: 10.0,
+	Range5V:  5.0,
+	Range2V:  2.0,
+	Range1V:  1.0,
+}
+
 type statusBit byte
 
 // Status bit values

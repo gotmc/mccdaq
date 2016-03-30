@@ -8,6 +8,7 @@ package usb1608fsplus
 import (
 	"encoding/binary"
 	"fmt"
+	"math"
 
 	"github.com/gotmc/libusb"
 )
@@ -72,4 +73,27 @@ func (daq *usb1608fsplus) UpgradeFirmware() error {
 		return fmt.Errorf("Error enabling upgrade firmware mode %s", err)
 	}
 	return nil
+}
+
+// volts converts the 2 byte binary value into the voltage for the given range
+func Volts(data []byte, voltageRange VoltageRange) (float64, error) {
+	if len(data) != 2 {
+		return 0.0, fmt.Errorf("binary value must be 2 bytes")
+	}
+	return volts(data, voltageRange), nil
+}
+
+func volts(data []byte, voltageRange VoltageRange) float64 {
+	// Since each binary encoded value is 16-bits (2 bytes), the converter value
+	// is 0x8000, which is 32768.
+	const (
+		converter = 32768
+	)
+	signedInt := int(binary.LittleEndian.Uint16(data)) - converter
+	value := VoltageMultiplier[voltageRange] * float64(signedInt) / converter
+	return value
+}
+
+func float32From2Bytes(data []byte) float32 {
+	return math.Float32frombits(uint32(binary.LittleEndian.Uint16(data)))
 }

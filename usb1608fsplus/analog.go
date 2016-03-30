@@ -474,6 +474,11 @@ func (ai *AnalogInput) EnableChannel(ch int) {
 	ai.Channels[ch].Enabled = true
 }
 
+func (ai *AnalogInput) Voltages(data []byte) ([]float64, error) {
+	// Check that the data is the right size given the number of enabled channels
+	return nil, nil
+}
+
 // DisableChannel disables the given channel without changing any other channel
 // configuration items.
 func (ai *AnalogInput) DisableChannel(ch int) {
