@@ -25,6 +25,8 @@ type Channel struct {
 	Enabled     bool         `json:"enabled"`
 	Range       VoltageRange `json:"range"`
 	Description string       `json:"desc"`
+	Slope       float64      `json:"slope"`
+	Intercept   float64      `json:"intercept"`
 }
 
 type Channels [8]Channel
@@ -39,6 +41,7 @@ type AnalogInput struct {
 	DebugMode         bool         `json:"debug_mode"`
 	Stall             Stall        `json:"stall_overrun"`
 	Channels          Channels     `json:"channels"`
+	GainTable         GainTable    `json:"gain_table"`
 }
 
 func (st *Stall) UnmarshalJSON(data []byte) error {
@@ -110,7 +113,11 @@ func (trigger *TriggerType) UnmarshalJSON(data []byte) error {
 }
 
 // NewAnalogInput is used to create a new AnalogInput for the given DAQer.
-func (daq *usb1608fsplus) NewAnalogInput() *AnalogInput {
+func (daq *usb1608fsplus) NewAnalogInput() (*AnalogInput, error) {
+	gainTable, err := daq.BuildGainTable()
+	if err != nil {
+		return nil, fmt.Errorf("Error reading gain table from DAQ: %s", err)
+	}
 	var channels [8]Channel
 	for i := 0; i < len(channels); i++ {
 		channels[i].Range = Range10V
@@ -125,8 +132,9 @@ func (daq *usb1608fsplus) NewAnalogInput() *AnalogInput {
 		DebugMode:         false,
 		Stall:             StallOnOverrun,
 		Channels:          channels,
+		GainTable:         gainTable,
 	}
-	return &analogInput
+	return &analogInput, nil
 }
 
 type TransferMode byte

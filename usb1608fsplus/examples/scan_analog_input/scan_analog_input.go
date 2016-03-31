@@ -31,6 +31,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Couldn't find a USB-1608FS-Plus: %s", err)
 	}
+	defer daq.Close()
 
 	// Print some info about the device
 	log.Printf("Vendor ID = 0x%x / Product ID = 0x%x\n", daq.DeviceDescriptor.VendorID,
@@ -48,7 +49,10 @@ func main() {
 	**************************/
 
 	// Create new analog input and ensure the scan is stopped and buffer cleared
-	ai := daq.NewAnalogInput()
+	ai, err := daq.NewAnalogInput()
+	if err != nil {
+		log.Fatalf("Error creating analog input: %s", err)
+	}
 	ai.StopScan()
 	time.Sleep(millisecondDelay * time.Millisecond)
 	ai.ClearScanBuffer()
@@ -95,7 +99,6 @@ func main() {
 			// Stop the analog scan and close the DAQ
 			ai.StopScan()
 			time.Sleep(millisecondDelay * time.Millisecond)
-			daq.Close()
 			log.Fatalf("Error reading scan: %s", err)
 		}
 		// Print the first 8 bytes and the last 8 bytes of each read
@@ -121,5 +124,4 @@ func main() {
 	time.Sleep(millisecondDelay * time.Millisecond)
 	ai.StopScan()
 	time.Sleep(millisecondDelay * time.Millisecond)
-	daq.Close()
 }

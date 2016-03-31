@@ -13,6 +13,11 @@ import (
 	"github.com/gotmc/libusb"
 )
 
+type Gain struct {
+	Slope     float64
+	Intercept float64
+}
+
 // FIXME(mdr): Should I use float64 for the gain table? Since the gain table is
 // stored using IEEE-754 4-byte floating point values, maybe we should use
 // float32 here? Using float32 might just cause a problem when using this code
