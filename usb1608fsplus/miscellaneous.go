@@ -75,21 +75,24 @@ func (daq *usb1608fsplus) UpgradeFirmware() error {
 	return nil
 }
 
-// volts converts the 2 byte binary value into the voltage for the given range
-func Volts(data []byte, voltageRange VoltageRange) (float64, error) {
+// VoltsData converts the 2 byte binary value into the voltage for the given range
+func VoltsData(data []byte, voltageRange VoltageRange) (float64, error) {
 	if len(data) != 2 {
 		return 0.0, fmt.Errorf("binary value must be 2 bytes")
 	}
-	return volts(data, voltageRange), nil
+	b := int(binary.LittleEndian.Uint16(data))
+	return Volts(b, voltageRange), nil
 }
 
-func volts(data []byte, voltageRange VoltageRange) float64 {
+// Volts converts the unsigned binary value into the voltage for the given
+// range
+func Volts(b int, voltageRange VoltageRange) float64 {
 	// Since each binary encoded value is 16-bits (2 bytes), the converter value
 	// is 0x8000, which is 32768.
 	const (
 		converter = 32768
 	)
-	signedInt := int(binary.LittleEndian.Uint16(data)) - converter
+	signedInt := b - converter
 	value := VoltageMultiplier[voltageRange] * float64(signedInt) / converter
 	return value
 }
