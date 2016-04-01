@@ -22,11 +22,11 @@ const (
 )
 
 type Channel struct {
-	Enabled     bool         `json:"enabled"`
-	Range       VoltageRange `json:"range"`
-	Description string       `json:"desc"`
-	Slope       float64      `json:"slope"`
-	Intercept   float64      `json:"intercept"`
+	Enabled     bool                     `json:"enabled"`
+	Range       VoltageRange             `json:"range"`
+	Description string                   `json:"desc"`
+	Slopes      map[VoltageRange]float64 `json:"slopes"`
+	Intercepts  map[VoltageRange]float64 `json:"intercepts"`
 }
 
 type Channels [8]Channel
@@ -41,7 +41,6 @@ type AnalogInput struct {
 	DebugMode         bool         `json:"debug_mode"`
 	Stall             Stall        `json:"stall_overrun"`
 	Channels          Channels     `json:"channels"`
-	GainTable         GainTable    `json:"gain_table"`
 }
 
 func (st *Stall) UnmarshalJSON(data []byte) error {
@@ -121,6 +120,13 @@ func (daq *usb1608fsplus) NewAnalogInput() (*AnalogInput, error) {
 	var channels [8]Channel
 	for i := 0; i < len(channels); i++ {
 		channels[i].Range = Range10V
+		channels[i].Slopes = make(map[VoltageRange]float64)
+		channels[i].Intercepts = make(map[VoltageRange]float64)
+		// Loop through each range to get the slope and intercept for each channel
+		for rng := 0; rng < len(gainTable.Slope); rng++ {
+			channels[i].Slopes[VoltageRange(rng)] = gainTable.Slope[rng][i]
+			channels[i].Intercepts[VoltageRange(rng)] = gainTable.Intercept[rng][i]
+		}
 	}
 	analogInput := AnalogInput{
 		DAQer:             daq,
@@ -132,7 +138,6 @@ func (daq *usb1608fsplus) NewAnalogInput() (*AnalogInput, error) {
 		DebugMode:         false,
 		Stall:             StallOnOverrun,
 		Channels:          channels,
-		GainTable:         gainTable,
 	}
 	return &analogInput, nil
 }
@@ -545,4 +550,22 @@ func (ai *AnalogInput) RawVoltages(data []byte) ([][]float64, error) {
 		}
 	}
 	return rawVoltages, nil
+}
+
+func (ch Channel) Volts(data []byte) (float64, error) {
+	if len(data) != 2 {
+		return 0.0, fmt.Errorf("binary value must be 2 bytes")
+	}
+	// Since each binary encoded value is 16-bits (2 bytes), the converter value
+	// is 0x8000, which is 32768.
+	const (
+		converter = 32768
+	)
+	slope := ch.Slopes[ch.Range]
+	intercept := ch.Intercepts[ch.Range]
+	encodedValue := int(binary.LittleEndian.Uint16(data))
+	correctedValue := int(float64(encodedValue)*slope - intercept)
+	signedValue := correctedValue - converter
+	value := VoltageMultiplier[ch.Range] * float64(signedValue) / converter
+	return value, nil
 }
