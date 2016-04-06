@@ -563,9 +563,22 @@ func (ch Channel) Volts(data []byte) (float64, error) {
 	)
 	slope := ch.Slopes[ch.Range]
 	intercept := ch.Intercepts[ch.Range]
+	fmt.Printf("Using slope = %f and intercept = %f\n", slope, intercept)
 	encodedValue := int(binary.LittleEndian.Uint16(data))
 	correctedValue := int(float64(encodedValue)*slope - intercept)
 	signedValue := correctedValue - converter
 	value := VoltageMultiplier[ch.Range] * float64(signedValue) / converter
 	return value, nil
+}
+
+func adjustRawValue(value uint, slope, offset float64) uint {
+	adjFloat := float64(value)*slope + offset
+	return uint(roundFloatToInt(adjFloat))
+}
+
+func roundFloatToInt(f float64) int {
+	if math.Abs(f) < 0.5 {
+		return 0
+	}
+	return int(f + math.Copysign(0.5, f))
 }

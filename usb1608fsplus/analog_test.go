@@ -170,3 +170,27 @@ func TestRound(t *testing.T) {
 		}
 	})
 }
+
+func TestAdjustRawValue(t *testing.T) {
+	testCases := []struct {
+		value         uint
+		slope         float64
+		offset        float64
+		adjustedValue uint
+	}{
+		{0x8000, 1.0, 0.0, 0x8000},
+		{0x8000, 1.154856, -5152.185547, 0x7FB2},
+	}
+	c.Convey("Given the need to adjust raw binary reading", t, func() {
+		for _, testCase := range testCases {
+			conveyance := fmt.Sprintf("When a %f slope and %f offset is provided to %#x", testCase.slope, testCase.offset, testCase.value)
+			c.Convey(conveyance, func() {
+				conveyance := fmt.Sprintf("Then the adjusted value should be %#x", testCase.adjustedValue)
+				c.Convey(conveyance, func() {
+					computedValue := adjustRawValue(testCase.value, testCase.slope, testCase.offset)
+					c.So(computedValue, c.ShouldEqual, testCase.adjustedValue)
+				})
+			})
+		}
+	})
+}
