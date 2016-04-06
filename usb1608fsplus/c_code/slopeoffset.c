@@ -32,9 +32,9 @@ int main ()
   uint8_t range;
 
   value = 0x8000;
-  slope = 1.154856;
-  offset = -5152.185547;
-  range = 0;
+  slope = 1.155244;
+  offset = -5451.133301;
+  range = 3;
   adjvalue = rint(value*slope + offset);
   printf("Value = %#x / Adjusted Value = %#x\n", value, adjvalue);
   printf("Votlage = %lf / Adjusted Voltage = %lf\n",

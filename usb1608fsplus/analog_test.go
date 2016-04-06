@@ -178,8 +178,10 @@ func TestAdjustRawValue(t *testing.T) {
 		offset        float64
 		adjustedValue uint
 	}{
+		{0x0000, 1.0, 0.0, 0x0000},
 		{0x8000, 1.0, 0.0, 0x8000},
 		{0x8000, 1.154856, -5152.185547, 0x7FB2},
+		{0x8000, 1.155244, -5451.133301, 0x7E94},
 	}
 	c.Convey("Given the need to adjust raw binary reading", t, func() {
 		for _, testCase := range testCases {
