@@ -29,7 +29,10 @@ $ go get github.com/gotmc/mccdaq
 ## Dependencies
 
 - [libusb C library][libusb-c] — Library for USB device access
+  - OS X: `$ brew install libusb`
+  - Debian/Ubuntu: `$ sudo apt-get install -y libusb-1.0-0 libusb-1.0-0-dev`
 - [Go libusb][libusb] — Go bindings for the [libusb C library][libusb-c]
+  - `$ go get github.com/gotmc/libusb`
 
 ## Documentation
 
