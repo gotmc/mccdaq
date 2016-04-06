@@ -173,10 +173,10 @@ func TestRound(t *testing.T) {
 
 func TestAdjustRawValue(t *testing.T) {
 	testCases := []struct {
-		value         uint
+		value         int
 		slope         float64
 		offset        float64
-		adjustedValue uint
+		adjustedValue int
 	}{
 		{0x0000, 1.0, 0.0, 0x0000},
 		{0x8000, 1.0, 0.0, 0x8000},
