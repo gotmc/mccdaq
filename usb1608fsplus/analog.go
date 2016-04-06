@@ -556,18 +556,12 @@ func (ch Channel) Volts(data []byte) (float64, error) {
 	if len(data) != 2 {
 		return 0.0, fmt.Errorf("binary value must be 2 bytes")
 	}
-	// Since each binary encoded value is 16-bits (2 bytes), the converter value
-	// is 0x8000, which is 32768.
-	const (
-		converter = 32768
-	)
 	slope := ch.Slopes[ch.Range]
 	offset := ch.Intercepts[ch.Range]
-	encodedValue := int(binary.LittleEndian.Uint16(data))
-	adjustedValue := adjustRawValue(encodedValue, slope, offset)
-	signedValue := adjustedValue - converter
-	value := VoltageMultiplier[ch.Range] * float64(signedValue) / converter
-	return value, nil
+	rawValue := int(binary.LittleEndian.Uint16(data))
+	adjustedValue := adjustRawValue(rawValue, slope, offset)
+	// log.Printf("rawValue = %#x / adjValue = %#x", rawValue, adjustedValue)
+	return Volts(adjustedValue, ch.Range), nil
 }
 
 func adjustRawValue(value int, slope, offset float64) int {
