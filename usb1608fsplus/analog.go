@@ -43,6 +43,7 @@ type AnalogInput struct {
 	Channels          Channels     `json:"channels"`
 }
 
+// UnmarshalJSON implements the Unmarshaler interface for Stall.
 func (st *Stall) UnmarshalJSON(data []byte) error {
 	// Extract the boolean from data.
 	var stall bool
@@ -58,6 +59,17 @@ func (st *Stall) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the Marshaler interface for Stall.
+func (st *Stall) MarshalJSON() ([]byte, error) {
+	stall := false
+	if *st == StallOnOverrun {
+		stall = true
+	}
+	return json.Marshal(stall)
+}
+
+// UnmarshalJSON implements the Unmarshaler interface for TransferMode by
+// converting the JSON boolean value into the correct TransferMode value.
 func (mode *TransferMode) UnmarshalJSON(data []byte) error {
 	// Extract the boolean from data.
 	var block bool
@@ -71,6 +83,15 @@ func (mode *TransferMode) UnmarshalJSON(data []byte) error {
 		*mode = ImmediateTransfer
 	}
 	return nil
+}
+
+// MarshalJSON implements the Marshaler interface for TransferMode.
+func (mode *TransferMode) MarshalJSON() ([]byte, error) {
+	isBlockTransfer := false
+	if *mode == BlockTransfer {
+		isBlockTransfer = true
+	}
+	return json.Marshal(isBlockTransfer)
 }
 
 // UnmarshalJSON implements the Unmarshaler interface for VoltageRange by
@@ -93,6 +114,13 @@ func (vr *VoltageRange) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the Marshaler interface for VoltageRange.
+func (vr *VoltageRange) MarshalJSON() ([]byte, error) {
+	// FIXME(mdr): Need to actually marshal the voltage range.
+	s := "FixMe"
+	return json.Marshal(s)
+}
+
 // UnmarshalJSON implements the Unmarshaler interface for TriggerType by taking
 // a string that matches a key in the TriggerTypes map and finding the
 // appropriate TriggerType value.
@@ -109,6 +137,13 @@ func (trigger *TriggerType) UnmarshalJSON(data []byte) error {
 	}
 	*trigger = got
 	return nil
+}
+
+// MarshalJSON implements the Marshaler interface for TriggerType.
+func (trigger *TriggerType) MarshalJSON() ([]byte, error) {
+	// FIXME(mdr): Need to actually marshal the voltage range.
+	s := "FixMeTrigger"
+	return json.Marshal(s)
 }
 
 // NewAnalogInput is used to create a new AnalogInput for the given DAQer.

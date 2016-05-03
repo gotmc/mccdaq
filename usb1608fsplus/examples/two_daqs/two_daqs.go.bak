@@ -1,0 +1,99 @@
+// Copyright (c) 2016 The mccdaq developers. All rights reserved.
+// Project site: https://github.com/gotmc/mccdaq
+// Use of this source code is governed by a MIT-style license that
+// can be found in the LICENSE.txt file for the project.
+
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"time"
+
+	"bitbucket.org/brewerscienceequipment/datastream-crash/ellie"
+
+	"github.com/gotmc/libusb"
+	"github.com/gotmc/mccdaq/usb1608fsplus"
+	"github.com/mitchellh/go-homedir"
+)
+
+const millisecondDelay = 100
+
+func main() {
+
+	// Parse the config flags
+	var (
+		configFlag = flag.String(
+			"config", "config.json", "Location of JSON config file.")
+	)
+	flag.Parse()
+	configFilename, err := homedir.Expand(*configFlag)
+	if err != nil {
+		log.Fatalf("Error reading the JSON config file")
+	}
+
+	// Setup the analog input scan
+	configData, err := ioutil.ReadFile(configFilename)
+	if err != nil {
+		log.Fatalf("Error reading the USB-1608FS-Plus JSON config file")
+	}
+	dec := json.NewDecoder(bytes.NewReader(configData))
+	var configJSON = struct {
+		ScansPerBuffer             int `json:"scans_per_buffer"`
+		TotalBuffers               int `json:"total_buffers"`
+		TimeoutMilliseconds        int `json:"timeout_ms"`
+		*usb1608fsplus.AnalogInput `json:"analog_input"`
+	}{
+		0,
+		0,
+		100,
+		ai,
+	}
+	if err := dec.Decode(&configJSON); err != nil {
+		log.Fatalf("parse USB-1608FS-Plus: %v", err)
+	}
+	scansPerBuffer := configJSON.ScansPerBuffer
+	totalBuffers := configJSON.TotalBuffers
+	ai.SetScanRanges()
+	infoStrings[1] = fmt.Sprintf("Scans/buffer = %d", scansPerBuffer)
+	infoStrings[2] = fmt.Sprintf("Total buffers = %d", totalBuffers)
+
+	// Read the global JSON config file.
+	config, err := config.ParseConfig(configFilename)
+	if err != nil {
+		log.Fatalf("Failed to read global config file %s", err)
+	}
+
+	ctx, err := libusb.Init()
+	if err != nil {
+		log.Fatal("Couldn't create USB context. Ending now.")
+	}
+	defer ctx.Exit()
+
+	// Create the USB-1608FS-Plus DAQ device
+	daq, err := usb1608fsplus.NewViaSN(ctx, "01ACD31D")
+	if err != nil {
+		log.Fatalf("Something bad getting S/N happened: %s", err)
+	}
+
+	// Print some info about the device
+	log.Printf("Vendor ID = 0x%x / Product ID = 0x%x\n", daq.DeviceDescriptor.VendorID,
+		daq.DeviceDescriptor.ProductID)
+	serialNumber, err := daq.SerialNumber()
+	log.Printf("Serial number via control transfer = %s", serialNumber)
+	log.Printf("USB ConfigurationIndex = %d\n", daq.ConfigDescriptor.ConfigurationIndex)
+	log.Printf("Bulk endpoint address = 0x%x (%b)\n",
+		daq.BulkEndpoint.EndpointAddress, daq.BulkEndpoint.EndpointAddress)
+
+	// Get status
+	status, err := daq.Status()
+	log.Printf("Status = %v", status)
+
+	// Close the DAQ
+	time.Sleep(millisecondDelay * time.Millisecond)
+	daq.Close()
+}
