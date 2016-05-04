@@ -188,9 +188,7 @@ func (vr *VoltageRange) UnmarshalJSON(data []byte) error {
 
 // MarshalJSON implements the Marshaler interface for VoltageRange.
 func (vr *VoltageRange) MarshalJSON() ([]byte, error) {
-	// FIXME(mdr): Need to actually marshal the voltage range.
-	s := "FixMe"
-	return json.Marshal(s)
+	return json.Marshal(voltageRangeJSON[*vr])
 }
 
 // NewAnalogInput is used to create a new AnalogInput for the given DAQer.

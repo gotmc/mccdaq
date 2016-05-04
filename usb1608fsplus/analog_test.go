@@ -283,3 +283,22 @@ func TestTriggerTypeMarshalJSON(t *testing.T) {
 		})
 	})
 }
+
+func TestVoltageRangeMarshalJSON(t *testing.T) {
+	c.Convey("Given the need to marshal VoltageRange into JSON", t, func() {
+		c.Convey("When Range2V is marshaled", func() {
+			var s = struct {
+				Range VoltageRange `json:"range"`
+			}{
+				Range2V,
+			}
+			c.Convey("Then the JSON object should have {\"range\":\"2V\"}", func() {
+				b, err := json.Marshal(&s)
+				if err != nil {
+					log.Printf("Error marshaling Range2V: %s", err)
+				}
+				c.So(b, c.ShouldResemble, []byte(`{"range":"2V"}`))
+			})
+		})
+	})
+}
