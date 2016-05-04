@@ -207,12 +207,11 @@ func TestStallMarshalJSON(t *testing.T) {
 			}{
 				StallOnOverrun,
 			}
-			c.Convey("Then the JSON object should have stall_overrun: true", func() {
+			c.Convey("Then the JSON object should have {\"stall_overrun\":true}", func() {
 				b, err := json.Marshal(&s)
 				if err != nil {
 					log.Printf("Error marshaling StallOnOverrun: %s", err)
 				}
-				log.Printf("json = %s", b)
 				c.So(b, c.ShouldResemble, []byte(`{"stall_overrun":true}`))
 			})
 		})
@@ -222,13 +221,46 @@ func TestStallMarshalJSON(t *testing.T) {
 			}{
 				StallInhibited,
 			}
-			c.Convey("Then the JSON object should have {\"stall_overrun\": false}", func() {
+			c.Convey("Then the JSON object should have {\"stall_overrun\":false}", func() {
 				b, err := json.Marshal(&s)
 				if err != nil {
-					log.Printf("Error marshaling StallOnOverrun: %s", err)
+					log.Printf("Error marshaling StallInhibited: %s", err)
+				}
+				c.So(b, c.ShouldResemble, []byte(`{"stall_overrun":false}`))
+			})
+		})
+	})
+}
+
+func TestTransferModeMarshalJSON(t *testing.T) {
+	c.Convey("Given the need to marshal TransferMode into JSON", t, func() {
+		c.Convey("When BlockTransfer is marshaled", func() {
+			var s = struct {
+				TransferMode TransferMode `json:"block_transfer"`
+			}{
+				BlockTransfer,
+			}
+			c.Convey("Then the JSON object should have {\"block_transfer\":true}", func() {
+				b, err := json.Marshal(&s)
+				if err != nil {
+					log.Printf("Error marshaling BlockTransfer: %s", err)
+				}
+				c.So(b, c.ShouldResemble, []byte(`{"block_transfer":true}`))
+			})
+		})
+		c.Convey("When ImmediateTransfer is marshaled", func() {
+			var s = struct {
+				TransferMode TransferMode `json:"block_transfer"`
+			}{
+				ImmediateTransfer,
+			}
+			c.Convey("Then the JSON object should have {\"block_transfer\":false}", func() {
+				b, err := json.Marshal(&s)
+				if err != nil {
+					log.Printf("Error marshaling ImmediateTransfer: %s", err)
 				}
 				log.Printf("json = %s", b)
-				c.So(b, c.ShouldResemble, []byte(`{"stall_overrun":false}`))
+				c.So(b, c.ShouldResemble, []byte(`{"block_transfer":false}`))
 			})
 		})
 	})
