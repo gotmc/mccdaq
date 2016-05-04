@@ -117,6 +117,13 @@ var InputRanges = map[string]VoltageRange{
 	"1V":  Range1V,
 }
 
+var voltageRangeJSON = map[VoltageRange]string{
+	Range10V: "10V",
+	Range5V:  "5V",
+	Range2V:  "2V",
+	Range1V:  "1V",
+}
+
 var voltageRanges = map[VoltageRange]string{
 	Range10V: "±10V",
 	Range5V:  "±5V",

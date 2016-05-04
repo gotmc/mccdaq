@@ -21,16 +21,6 @@ const (
 	bytesPerWord     = 2
 )
 
-type Channel struct {
-	Enabled     bool                     `json:"enabled"`
-	Range       VoltageRange             `json:"range"`
-	Description string                   `json:"desc"`
-	Slopes      map[VoltageRange]float64 `json:"slopes"`
-	Intercepts  map[VoltageRange]float64 `json:"intercepts"`
-}
-
-type Channels [8]Channel
-
 type AnalogInput struct {
 	DAQer             `json:"-"`
 	Frequency         float64      `json:"freq"`
@@ -41,6 +31,89 @@ type AnalogInput struct {
 	DebugMode         bool         `json:"debug_mode"`
 	Stall             Stall        `json:"stall_overrun"`
 	Channels          Channels     `json:"channels"`
+}
+
+type Channel struct {
+	Enabled     bool         `json:"enabled"`
+	Range       VoltageRange `json:"range"`
+	Description string       `json:"desc"`
+	Slopes      Slopes       `json:"slopes"`
+	Intercepts  Intercepts   `json:"intercepts"`
+}
+
+type Intercepts map[VoltageRange]float64
+
+type Channels [8]Channel
+
+type InternalPacer byte
+
+const (
+	InternalPacerOff InternalPacer = 0x0
+	InternalPacerOn  InternalPacer = 0x1
+)
+
+type Slopes map[VoltageRange]float64
+
+type Stall byte
+
+const (
+	StallOnOverrun Stall = 0x0
+	StallInhibited Stall = 0x1
+)
+
+type TransferMode byte
+
+const (
+	BlockTransfer     TransferMode = 0x0
+	ImmediateTransfer TransferMode = 0x1
+)
+
+type TriggerType byte
+
+const (
+	NoExternalTrigger  TriggerType = 0x0
+	RisingEdgeTrigger  TriggerType = 0x1
+	FallingEdgeTrigger TriggerType = 0x2
+	HighLevelTrigger   TriggerType = 0x3
+	LowLevelTrigger    TriggerType = 0x4
+)
+
+var TriggerTypes = map[string]TriggerType{
+	"none":    NoExternalTrigger,
+	"rising":  RisingEdgeTrigger,
+	"falling": FallingEdgeTrigger,
+	"high":    HighLevelTrigger,
+	"low":     LowLevelTrigger,
+}
+
+var TriggerTypeStrings = map[TriggerType]string{
+	NoExternalTrigger:  "none",
+	RisingEdgeTrigger:  "rising",
+	FallingEdgeTrigger: "falling",
+	HighLevelTrigger:   "high",
+	LowLevelTrigger:    "low",
+}
+
+func (t TriggerType) String() string {
+	return TriggerTypeStrings[t]
+}
+
+// MarshalJSON implements the Marshaler interface for Slopes.
+func (s *Slopes) MarshalJSON() ([]byte, error) {
+	sloper := make(map[string]float64)
+	for k, v := range *s {
+		sloper[voltageRangeJSON[k]] = v
+	}
+	return json.Marshal(sloper)
+}
+
+// MarshalJSON implements the Marshaler interface for Intercepts.
+func (i *Intercepts) MarshalJSON() ([]byte, error) {
+	intercepter := make(map[string]float64)
+	for k, v := range *i {
+		intercepter[voltageRangeJSON[k]] = v
+	}
+	return json.Marshal(intercepter)
 }
 
 // UnmarshalJSON implements the Unmarshaler interface for Stall.
@@ -94,6 +167,28 @@ func (mode *TransferMode) MarshalJSON() ([]byte, error) {
 	return json.Marshal(isBlockTransfer)
 }
 
+// UnmarshalJSON implements the Unmarshaler interface for TriggerType by taking
+// a string that matches a key in the TriggerTypes map and finding the
+// appropriate TriggerType value.
+func (trigger *TriggerType) UnmarshalJSON(data []byte) error {
+	// Extract the string from data.
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return fmt.Errorf("range should be a string, got %s", data)
+	}
+	got, ok := TriggerTypes[s]
+	if !ok {
+		return fmt.Errorf("Invalid TriggerType %q", s)
+	}
+	*trigger = got
+	return nil
+}
+
+// MarshalJSON implements the Marshaler interface for TriggerType.
+func (trigger *TriggerType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(TriggerTypeStrings[*trigger])
+}
+
 // UnmarshalJSON implements the Unmarshaler interface for VoltageRange by
 // taking a string that matches a key in the InputRanges map and finding the
 // appropriate VoltageRange value.
@@ -103,7 +198,6 @@ func (vr *VoltageRange) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &s); err != nil {
 		return fmt.Errorf("range should be a string, got %s", data)
 	}
-
 	// Ensure the provided string matches one of the keys in the map
 	got, ok := InputRanges[s]
 	if !ok {
@@ -116,34 +210,7 @@ func (vr *VoltageRange) UnmarshalJSON(data []byte) error {
 
 // MarshalJSON implements the Marshaler interface for VoltageRange.
 func (vr *VoltageRange) MarshalJSON() ([]byte, error) {
-	// FIXME(mdr): Need to actually marshal the voltage range.
-	s := "FixMe"
-	return json.Marshal(s)
-}
-
-// UnmarshalJSON implements the Unmarshaler interface for TriggerType by taking
-// a string that matches a key in the TriggerTypes map and finding the
-// appropriate TriggerType value.
-func (trigger *TriggerType) UnmarshalJSON(data []byte) error {
-	// Extract the string from data.
-	var s string
-	if err := json.Unmarshal(data, &s); err != nil {
-		return fmt.Errorf("range should be a string, got %s", data)
-	}
-
-	got, ok := TriggerTypes[s]
-	if !ok {
-		return fmt.Errorf("Invalid TriggerType %q", s)
-	}
-	*trigger = got
-	return nil
-}
-
-// MarshalJSON implements the Marshaler interface for TriggerType.
-func (trigger *TriggerType) MarshalJSON() ([]byte, error) {
-	// FIXME(mdr): Need to actually marshal the voltage range.
-	s := "FixMeTrigger"
-	return json.Marshal(s)
+	return json.Marshal(voltageRangeJSON[*vr])
 }
 
 // NewAnalogInput is used to create a new AnalogInput for the given DAQer.
@@ -176,45 +243,6 @@ func (daq *usb1608fsplus) NewAnalogInput() (*AnalogInput, error) {
 	}
 	return &analogInput, nil
 }
-
-type TransferMode byte
-
-const (
-	BlockTransfer     TransferMode = 0x0
-	ImmediateTransfer TransferMode = 0x1
-)
-
-type InternalPacer byte
-
-const (
-	InternalPacerOff InternalPacer = 0x0
-	InternalPacerOn  InternalPacer = 0x1
-)
-
-type TriggerType byte
-
-const (
-	NoExternalTrigger  TriggerType = 0x0
-	RisingEdgeTrigger  TriggerType = 0x1
-	FallingEdgeTrigger TriggerType = 0x2
-	HighLevelTrigger   TriggerType = 0x3
-	LowLevelTrigger    TriggerType = 0x4
-)
-
-var TriggerTypes = map[string]TriggerType{
-	"none":    NoExternalTrigger,
-	"rising":  RisingEdgeTrigger,
-	"falling": FallingEdgeTrigger,
-	"high":    HighLevelTrigger,
-	"low":     LowLevelTrigger,
-}
-
-type Stall byte
-
-const (
-	StallOnOverrun Stall = 0x0
-	StallInhibited Stall = 0x1
-)
 
 func (ai *AnalogInput) EnabledChannels() byte {
 	return ai.Channels.Enabled()
