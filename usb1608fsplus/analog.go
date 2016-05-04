@@ -34,12 +34,14 @@ type AnalogInput struct {
 }
 
 type Channel struct {
-	Enabled     bool                     `json:"enabled"`
-	Range       VoltageRange             `json:"range"`
-	Description string                   `json:"desc"`
-	Slopes      map[VoltageRange]float64 `json:"slopes"`
-	Intercepts  map[VoltageRange]float64 `json:"intercepts"`
+	Enabled     bool         `json:"enabled"`
+	Range       VoltageRange `json:"range"`
+	Description string       `json:"desc"`
+	Slopes      Slopes       `json:"slopes"`
+	Intercepts  Intercepts   `json:"intercepts"`
 }
+
+type Intercepts map[VoltageRange]float64
 
 type Channels [8]Channel
 
@@ -49,6 +51,8 @@ const (
 	InternalPacerOff InternalPacer = 0x0
 	InternalPacerOn  InternalPacer = 0x1
 )
+
+type Slopes map[VoltageRange]float64
 
 type Stall byte
 
@@ -92,6 +96,24 @@ var TriggerTypeStrings = map[TriggerType]string{
 
 func (t TriggerType) String() string {
 	return TriggerTypeStrings[t]
+}
+
+// MarshalJSON implements the Marshaler interface for Slopes.
+func (s *Slopes) MarshalJSON() ([]byte, error) {
+	sloper := make(map[string]float64)
+	for k, v := range *s {
+		sloper[voltageRangeJSON[k]] = v
+	}
+	return json.Marshal(sloper)
+}
+
+// MarshalJSON implements the Marshaler interface for Intercepts.
+func (i *Intercepts) MarshalJSON() ([]byte, error) {
+	intercepter := make(map[string]float64)
+	for k, v := range *i {
+		intercepter[voltageRangeJSON[k]] = v
+	}
+	return json.Marshal(intercepter)
 }
 
 // UnmarshalJSON implements the Unmarshaler interface for Stall.

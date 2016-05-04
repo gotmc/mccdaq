@@ -302,3 +302,106 @@ func TestVoltageRangeMarshalJSON(t *testing.T) {
 		})
 	})
 }
+
+func TestSlopesMarshalJSON(t *testing.T) {
+	slopes := make(Slopes)
+	slopes[Range10V] = 1.10
+	slopes[Range2V] = 1.02
+	var s = struct {
+		Slopes Slopes `json:"slopes"`
+	}{
+		slopes,
+	}
+	c.Convey("Given the need to marshal Slopes into JSON", t, func() {
+		c.Convey("When Slopes is marshaled", func() {
+			c.Convey("Then the JSON object should have JSONified Slopes map", func() {
+				b, err := json.Marshal(&s)
+				if err != nil {
+					log.Printf("Error marshaling Slopes: %s", err)
+				}
+				log.Printf("slopes = %s", b)
+				c.So(b, c.ShouldResemble, []byte(`{"slopes":{"10V":1.1,"2V":1.02}}`))
+			})
+		})
+	})
+}
+
+func TestInteceptsMarshalJSON(t *testing.T) {
+	intercepts := make(Intercepts)
+	intercepts[Range10V] = 2.10
+	intercepts[Range2V] = 2.02
+	var s = struct {
+		Intercepts Intercepts `json:"intercepts"`
+	}{
+		intercepts,
+	}
+	c.Convey("Given the need to marshal Intercepts into JSON", t, func() {
+		c.Convey("When Intercepts is marshaled", func() {
+			c.Convey("Then the JSON object should have JSONified Intercepts map", func() {
+				b, err := json.Marshal(&s)
+				if err != nil {
+					log.Printf("Error marshaling Intercepts: %s", err)
+				}
+				log.Printf("intercepts = %s", b)
+				c.So(b, c.ShouldResemble, []byte(`{"intercepts":{"10V":2.1,"2V":2.02}}`))
+			})
+		})
+	})
+}
+
+func TestChannelMarshalJSON(t *testing.T) {
+	slopes := make(map[VoltageRange]float64)
+	slopes[Range10V] = 1.10
+	slopes[Range2V] = 1.02
+	intercepts := make(map[VoltageRange]float64)
+	intercepts[Range10V] = 2.10
+	intercepts[Range2V] = 2.02
+	s := Channel{
+		Enabled:     true,
+		Range:       Range2V,
+		Description: "Nothing",
+		Slopes:      slopes,
+		Intercepts:  intercepts,
+	}
+	c.Convey("Given the need to marshal Channel into JSON", t, func() {
+		c.Convey("When Channel is marshaled", func() {
+			c.Convey("Then the JSON object should have JSONified Channel", func() {
+				b, err := json.Marshal(&s)
+				if err != nil {
+					log.Printf("Error marshaling Channel: %s", err)
+				}
+				log.Printf("channel = %s", b)
+				c.So(b, c.ShouldResemble, []byte(`{"enabled":true,"range":"2V","desc":"Nothing","slopes":{"10V":1.1,"2V":1.02},"intercepts":{"10V":2.1,"2V":2.02}}`))
+			})
+		})
+	})
+}
+
+// func TestAnalogInputMarshalJSON(t *testing.T) {
+// givenRanges := [...]byte{0x0, 0x0, 0x1, 0x1, 0x3, 0x3, 0x5, 0x5}
+// f := FakeDAQer{}
+// ai := AnalogInput{
+// DAQer:             &f,
+// Frequency: 500,
+// TransferMode:      ImmediateTransfer,
+// Trigger:           RisingEdgeTrigger,
+// UseExternalPacer:  true,
+// OutputPacerOnSync: true,
+// DebugMode:         false,
+// Stall:             StallInhibited,
+// }
+// for i, givenRange := range givenRanges {
+// ai.Channels[i].Range = VoltageRange(givenRange)
+// }
+// c.Convey("Given the need to marshal AnalogInput into JSON", t, func() {
+// c.Convey("When AnalogInput is marshaled", func() {
+// c.Convey("Then the JSON object should have JSONified AnalogInput", func() {
+// b, err := json.Marshal(&ai)
+// if err != nil {
+// log.Printf("Error marshaling AnalogInput: %s", err)
+// }
+// c.So(b, c.ShouldResemble, []byte(`{"range":"2V"}`))
+// })
+// })
+// })
+// }
