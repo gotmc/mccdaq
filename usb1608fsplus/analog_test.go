@@ -259,8 +259,26 @@ func TestTransferModeMarshalJSON(t *testing.T) {
 				if err != nil {
 					log.Printf("Error marshaling ImmediateTransfer: %s", err)
 				}
-				log.Printf("json = %s", b)
 				c.So(b, c.ShouldResemble, []byte(`{"block_transfer":false}`))
+			})
+		})
+	})
+}
+
+func TestTriggerTypeMarshalJSON(t *testing.T) {
+	c.Convey("Given the need to marshal TriggerType into JSON", t, func() {
+		c.Convey("When NoExternalTrigger is marshaled", func() {
+			var s = struct {
+				Trigger TriggerType `json:"trigger"`
+			}{
+				NoExternalTrigger,
+			}
+			c.Convey("Then the JSON object should have {\"trigger\":\"none\"}", func() {
+				b, err := json.Marshal(&s)
+				if err != nil {
+					log.Printf("Error marshaling NoExternalTrigger: %s", err)
+				}
+				c.So(b, c.ShouldResemble, []byte(`{"trigger":"none"}`))
 			})
 		})
 	})

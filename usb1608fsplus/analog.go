@@ -21,6 +21,35 @@ const (
 	bytesPerWord     = 2
 )
 
+type AnalogInput struct {
+	DAQer             `json:"-"`
+	Frequency         float64      `json:"freq"`
+	TransferMode      TransferMode `json:"block_transfer"`
+	Trigger           TriggerType  `json:"trigger"`
+	UseExternalPacer  bool         `json:"ext_pacer"`
+	OutputPacerOnSync bool         `json:"output_sync"`
+	DebugMode         bool         `json:"debug_mode"`
+	Stall             Stall        `json:"stall_overrun"`
+	Channels          Channels     `json:"channels"`
+}
+
+type Channel struct {
+	Enabled     bool                     `json:"enabled"`
+	Range       VoltageRange             `json:"range"`
+	Description string                   `json:"desc"`
+	Slopes      map[VoltageRange]float64 `json:"slopes"`
+	Intercepts  map[VoltageRange]float64 `json:"intercepts"`
+}
+
+type Channels [8]Channel
+
+type InternalPacer byte
+
+const (
+	InternalPacerOff InternalPacer = 0x0
+	InternalPacerOn  InternalPacer = 0x1
+)
+
 type Stall byte
 
 const (
@@ -33,13 +62,6 @@ type TransferMode byte
 const (
 	BlockTransfer     TransferMode = 0x0
 	ImmediateTransfer TransferMode = 0x1
-)
-
-type InternalPacer byte
-
-const (
-	InternalPacerOff InternalPacer = 0x0
-	InternalPacerOn  InternalPacer = 0x1
 )
 
 type TriggerType byte
@@ -60,26 +82,16 @@ var TriggerTypes = map[string]TriggerType{
 	"low":     LowLevelTrigger,
 }
 
-type Channel struct {
-	Enabled     bool                     `json:"enabled"`
-	Range       VoltageRange             `json:"range"`
-	Description string                   `json:"desc"`
-	Slopes      map[VoltageRange]float64 `json:"slopes"`
-	Intercepts  map[VoltageRange]float64 `json:"intercepts"`
+var TriggerTypeStrings = map[TriggerType]string{
+	NoExternalTrigger:  "none",
+	RisingEdgeTrigger:  "rising",
+	FallingEdgeTrigger: "falling",
+	HighLevelTrigger:   "high",
+	LowLevelTrigger:    "low",
 }
 
-type Channels [8]Channel
-
-type AnalogInput struct {
-	DAQer             `json:"-"`
-	Frequency         float64      `json:"freq"`
-	TransferMode      TransferMode `json:"block_transfer"`
-	Trigger           TriggerType  `json:"trigger"`
-	UseExternalPacer  bool         `json:"ext_pacer"`
-	OutputPacerOnSync bool         `json:"output_sync"`
-	DebugMode         bool         `json:"debug_mode"`
-	Stall             Stall        `json:"stall_overrun"`
-	Channels          Channels     `json:"channels"`
+func (t TriggerType) String() string {
+	return TriggerTypeStrings[t]
 }
 
 // UnmarshalJSON implements the Unmarshaler interface for Stall.
@@ -100,7 +112,6 @@ func (st *Stall) UnmarshalJSON(data []byte) error {
 
 // MarshalJSON implements the Marshaler interface for Stall.
 func (st *Stall) MarshalJSON() ([]byte, error) {
-	log.Printf("Trying to marshal stall")
 	stall := false
 	if *st == StallOnOverrun {
 		stall = true
@@ -134,6 +145,28 @@ func (mode *TransferMode) MarshalJSON() ([]byte, error) {
 	return json.Marshal(isBlockTransfer)
 }
 
+// UnmarshalJSON implements the Unmarshaler interface for TriggerType by taking
+// a string that matches a key in the TriggerTypes map and finding the
+// appropriate TriggerType value.
+func (trigger *TriggerType) UnmarshalJSON(data []byte) error {
+	// Extract the string from data.
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return fmt.Errorf("range should be a string, got %s", data)
+	}
+	got, ok := TriggerTypes[s]
+	if !ok {
+		return fmt.Errorf("Invalid TriggerType %q", s)
+	}
+	*trigger = got
+	return nil
+}
+
+// MarshalJSON implements the Marshaler interface for TriggerType.
+func (trigger *TriggerType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(TriggerTypeStrings[*trigger])
+}
+
 // UnmarshalJSON implements the Unmarshaler interface for VoltageRange by
 // taking a string that matches a key in the InputRanges map and finding the
 // appropriate VoltageRange value.
@@ -143,7 +176,6 @@ func (vr *VoltageRange) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &s); err != nil {
 		return fmt.Errorf("range should be a string, got %s", data)
 	}
-
 	// Ensure the provided string matches one of the keys in the map
 	got, ok := InputRanges[s]
 	if !ok {
@@ -158,31 +190,6 @@ func (vr *VoltageRange) UnmarshalJSON(data []byte) error {
 func (vr *VoltageRange) MarshalJSON() ([]byte, error) {
 	// FIXME(mdr): Need to actually marshal the voltage range.
 	s := "FixMe"
-	return json.Marshal(s)
-}
-
-// UnmarshalJSON implements the Unmarshaler interface for TriggerType by taking
-// a string that matches a key in the TriggerTypes map and finding the
-// appropriate TriggerType value.
-func (trigger *TriggerType) UnmarshalJSON(data []byte) error {
-	// Extract the string from data.
-	var s string
-	if err := json.Unmarshal(data, &s); err != nil {
-		return fmt.Errorf("range should be a string, got %s", data)
-	}
-
-	got, ok := TriggerTypes[s]
-	if !ok {
-		return fmt.Errorf("Invalid TriggerType %q", s)
-	}
-	*trigger = got
-	return nil
-}
-
-// MarshalJSON implements the Marshaler interface for TriggerType.
-func (trigger *TriggerType) MarshalJSON() ([]byte, error) {
-	// FIXME(mdr): Need to actually marshal the voltage range.
-	s := "FixMeTrigger"
 	return json.Marshal(s)
 }
 
