@@ -6,7 +6,9 @@
 package usb1608fsplus
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"testing"
 
 	c "github.com/smartystreets/goconvey/convey"
@@ -194,5 +196,40 @@ func TestAdjustRawValue(t *testing.T) {
 				})
 			})
 		}
+	})
+}
+
+func TestStallMarshalJSON(t *testing.T) {
+	c.Convey("Given the need to marshal Stall into JSON", t, func() {
+		c.Convey("When StallOnOverrun is marshaled", func() {
+			var s = struct {
+				Stall Stall `json:"stall_overrun"`
+			}{
+				StallOnOverrun,
+			}
+			c.Convey("Then the JSON object should have stall_overrun: true", func() {
+				b, err := json.Marshal(&s)
+				if err != nil {
+					log.Printf("Error marshaling StallOnOverrun: %s", err)
+				}
+				log.Printf("json = %s", b)
+				c.So(b, c.ShouldResemble, []byte(`{"stall_overrun":true}`))
+			})
+		})
+		c.Convey("When StallInhibited is marshaled", func() {
+			var s = struct {
+				Stall Stall `json:"stall_overrun"`
+			}{
+				StallInhibited,
+			}
+			c.Convey("Then the JSON object should have {\"stall_overrun\": false}", func() {
+				b, err := json.Marshal(&s)
+				if err != nil {
+					log.Printf("Error marshaling StallOnOverrun: %s", err)
+				}
+				log.Printf("json = %s", b)
+				c.So(b, c.ShouldResemble, []byte(`{"stall_overrun":false}`))
+			})
+		})
 	})
 }

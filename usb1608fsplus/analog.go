@@ -21,6 +21,45 @@ const (
 	bytesPerWord     = 2
 )
 
+type Stall byte
+
+const (
+	StallOnOverrun Stall = 0x0
+	StallInhibited Stall = 0x1
+)
+
+type TransferMode byte
+
+const (
+	BlockTransfer     TransferMode = 0x0
+	ImmediateTransfer TransferMode = 0x1
+)
+
+type InternalPacer byte
+
+const (
+	InternalPacerOff InternalPacer = 0x0
+	InternalPacerOn  InternalPacer = 0x1
+)
+
+type TriggerType byte
+
+const (
+	NoExternalTrigger  TriggerType = 0x0
+	RisingEdgeTrigger  TriggerType = 0x1
+	FallingEdgeTrigger TriggerType = 0x2
+	HighLevelTrigger   TriggerType = 0x3
+	LowLevelTrigger    TriggerType = 0x4
+)
+
+var TriggerTypes = map[string]TriggerType{
+	"none":    NoExternalTrigger,
+	"rising":  RisingEdgeTrigger,
+	"falling": FallingEdgeTrigger,
+	"high":    HighLevelTrigger,
+	"low":     LowLevelTrigger,
+}
+
 type Channel struct {
 	Enabled     bool                     `json:"enabled"`
 	Range       VoltageRange             `json:"range"`
@@ -61,6 +100,7 @@ func (st *Stall) UnmarshalJSON(data []byte) error {
 
 // MarshalJSON implements the Marshaler interface for Stall.
 func (st *Stall) MarshalJSON() ([]byte, error) {
+	log.Printf("Trying to marshal stall")
 	stall := false
 	if *st == StallOnOverrun {
 		stall = true
@@ -176,45 +216,6 @@ func (daq *usb1608fsplus) NewAnalogInput() (*AnalogInput, error) {
 	}
 	return &analogInput, nil
 }
-
-type TransferMode byte
-
-const (
-	BlockTransfer     TransferMode = 0x0
-	ImmediateTransfer TransferMode = 0x1
-)
-
-type InternalPacer byte
-
-const (
-	InternalPacerOff InternalPacer = 0x0
-	InternalPacerOn  InternalPacer = 0x1
-)
-
-type TriggerType byte
-
-const (
-	NoExternalTrigger  TriggerType = 0x0
-	RisingEdgeTrigger  TriggerType = 0x1
-	FallingEdgeTrigger TriggerType = 0x2
-	HighLevelTrigger   TriggerType = 0x3
-	LowLevelTrigger    TriggerType = 0x4
-)
-
-var TriggerTypes = map[string]TriggerType{
-	"none":    NoExternalTrigger,
-	"rising":  RisingEdgeTrigger,
-	"falling": FallingEdgeTrigger,
-	"high":    HighLevelTrigger,
-	"low":     LowLevelTrigger,
-}
-
-type Stall byte
-
-const (
-	StallOnOverrun Stall = 0x0
-	StallInhibited Stall = 0x1
-)
 
 func (ai *AnalogInput) EnabledChannels() byte {
 	return ai.Channels.Enabled()
