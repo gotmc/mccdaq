@@ -7,6 +7,7 @@ package usb1608fsplus
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/gotmc/libusb"
@@ -65,6 +66,7 @@ func NewViaSN(ctx *libusb.Context, sn string) (*usb1608fsplus, error) {
 				return &daq, fmt.Errorf("Error reading S/N: %s", err)
 			}
 			if serialNum == sn {
+				log.Printf("Found S/N %s. Creating device", sn)
 				return create(usbDevice, usbDeviceHandle)
 			}
 			usbDeviceHandle.Close()
