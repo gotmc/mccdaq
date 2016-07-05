@@ -6,6 +6,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"time"
 
@@ -15,7 +16,18 @@ import (
 
 const millisecondDelay = 100
 
+var (
+	sn string
+)
+
+func init() {
+	flag.StringVar(&sn, "sn", "01AF3FAE", "MCC DAQs S/N")
+}
+
 func main() {
+	// Parse the config flags to determine the config JSON filename
+	flag.Parse()
+
 	ctx, err := libusb.Init()
 	if err != nil {
 		log.Fatal("Couldn't create USB context. Ending now.")
@@ -23,7 +35,7 @@ func main() {
 	defer ctx.Exit()
 
 	// Create the USB-1608FS-Plus DAQ device
-	daq, err := usb1608fsplus.NewViaSN(ctx, "01ACD31D")
+	daq, err := usb1608fsplus.NewViaSN(ctx, sn)
 	if err != nil {
 		log.Fatalf("Something bad getting S/N happened: %s", err)
 	}
