@@ -124,12 +124,16 @@ func (st *Stall) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("stall should be a boolean, got %s", data)
 	}
 
-	if stall {
+	st.OnOverrun(stall)
+	return nil
+}
+
+func (st *Stall) OnOverrun(t bool) {
+	if t {
 		*st = StallOnOverrun
 	} else {
 		*st = StallInhibited
 	}
-	return nil
 }
 
 // MarshalJSON implements the Marshaler interface for Stall.
@@ -149,12 +153,7 @@ func (mode *TransferMode) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &block); err != nil {
 		return fmt.Errorf("block_transfer should be a boolean, got %s", data)
 	}
-
-	if block {
-		*mode = BlockTransfer
-	} else {
-		*mode = ImmediateTransfer
-	}
+	mode.BlockMode(block)
 	return nil
 }
 
@@ -167,6 +166,14 @@ func (mode *TransferMode) MarshalJSON() ([]byte, error) {
 	return json.Marshal(isBlockTransfer)
 }
 
+func (mode *TransferMode) BlockMode(block bool) {
+	if block {
+		*mode = BlockTransfer
+	} else {
+		*mode = ImmediateTransfer
+	}
+}
+
 // UnmarshalJSON implements the Unmarshaler interface for TriggerType by taking
 // a string that matches a key in the TriggerTypes map and finding the
 // appropriate TriggerType value.
@@ -176,6 +183,10 @@ func (trigger *TriggerType) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &s); err != nil {
 		return fmt.Errorf("range should be a string, got %s", data)
 	}
+	return trigger.SetType(s)
+}
+
+func (trigger *TriggerType) SetType(s string) error {
 	got, ok := TriggerTypes[s]
 	if !ok {
 		return fmt.Errorf("Invalid TriggerType %q", s)
@@ -198,6 +209,10 @@ func (vr *VoltageRange) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &s); err != nil {
 		return fmt.Errorf("range should be a string, got %s", data)
 	}
+	return vr.Set(s)
+}
+
+func (vr *VoltageRange) Set(s string) error {
 	// Ensure the provided string matches one of the keys in the map
 	got, ok := InputRanges[s]
 	if !ok {
