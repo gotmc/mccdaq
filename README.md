@@ -17,7 +17,11 @@ Below is a list of supported MCC devices. If you want to add a device,
 please open an issue. Better yet, please open a pull request with the
 updated code.
 
-- [USB-1608FS-Plus][]
+- [USB-1608FS-Plus][]: Digital I/O and event counter not yet
+  implemented.
+- [USB-200 Series][usb-20x]: Digital I/O, analog output, and 32-bit
+  counter not yet implemented. Not yet tested on an actual [USB-20X][]
+  device.
 
 
 ## Installation
@@ -98,3 +102,5 @@ information.
 [pull request]: https://help.github.com/articles/using-pull-requests
 [Scott Chacon]: http://scottchacon.com/about.html
 [usb-1608fs-plus]: http://www.mccdaq.com/usb-data-acquisition/USB-1608FS-Plus.aspx
+[usb-20x]:
+http://www.mccdaq.com/usb-data-acquisition/USB-200-Series.aspx
