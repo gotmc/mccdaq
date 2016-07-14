@@ -3,7 +3,7 @@
 // Use of this source code is governed by a MIT-style license that
 // can be found in the LICENSE.txt file for the project.
 
-package usb1608fsplus
+package usb20x
 
 import (
 	"encoding/binary"
@@ -16,10 +16,17 @@ import (
 )
 
 const (
-	maxFrequency     = 500000
 	defaultFrequency = 10000
 	bytesPerWord     = 2
+	numChannels      = 8
 )
+
+var maxFrequency = map[int]float64{
+	usb201PID: 100000,
+	usb202PID: 100000,
+	usb204PID: 100000,
+	usb205PID: 500000,
+}
 
 type AnalogInput struct {
 	DAQer             `json:"-"`
@@ -37,13 +44,11 @@ type Channel struct {
 	Enabled     bool         `json:"enabled"`
 	Range       VoltageRange `json:"range"`
 	Description string       `json:"desc"`
-	Slopes      Slopes       `json:"slopes"`
-	Intercepts  Intercepts   `json:"intercepts"`
+	Slope       float64      `json:"slope"`
+	Intercept   float64      `json:"intercept"`
 }
 
-type Intercepts map[VoltageRange]float64
-
-type Channels [8]Channel
+type Channels [numChannels]Channel
 
 type InternalPacer byte
 
@@ -51,8 +56,6 @@ const (
 	InternalPacerOff InternalPacer = 0x0
 	InternalPacerOn  InternalPacer = 0x1
 )
-
-type Slopes map[VoltageRange]float64
 
 type Stall byte
 
@@ -96,24 +99,6 @@ var TriggerTypeStrings = map[TriggerType]string{
 
 func (t TriggerType) String() string {
 	return TriggerTypeStrings[t]
-}
-
-// MarshalJSON implements the Marshaler interface for Slopes.
-func (s *Slopes) MarshalJSON() ([]byte, error) {
-	sloper := make(map[string]float64)
-	for k, v := range *s {
-		sloper[voltageRangeJSON[k]] = v
-	}
-	return json.Marshal(sloper)
-}
-
-// MarshalJSON implements the Marshaler interface for Intercepts.
-func (i *Intercepts) MarshalJSON() ([]byte, error) {
-	intercepter := make(map[string]float64)
-	for k, v := range *i {
-		intercepter[voltageRangeJSON[k]] = v
-	}
-	return json.Marshal(intercepter)
 }
 
 // UnmarshalJSON implements the Unmarshaler interface for Stall.
@@ -229,21 +214,16 @@ func (vr *VoltageRange) MarshalJSON() ([]byte, error) {
 }
 
 // NewAnalogInput is used to create a new AnalogInput for the given DAQer.
-func (daq *usb1608fsplus) NewAnalogInput() (*AnalogInput, error) {
+func (daq *usb20x) NewAnalogInput() (*AnalogInput, error) {
 	gainTable, err := daq.BuildGainTable()
 	if err != nil {
 		return nil, fmt.Errorf("Error reading gain table from DAQ: %s", err)
 	}
-	var channels [8]Channel
+	var channels [numChannels]Channel
 	for i := 0; i < len(channels); i++ {
-		channels[i].Range = Range10V
-		channels[i].Slopes = make(map[VoltageRange]float64)
-		channels[i].Intercepts = make(map[VoltageRange]float64)
-		// Loop through each range to get the slope and intercept for each channel
-		for rng := 0; rng < len(gainTable.Slope); rng++ {
-			channels[i].Slopes[VoltageRange(rng)] = gainTable.Slope[rng][i]
-			channels[i].Intercepts[VoltageRange(rng)] = gainTable.Intercept[rng][i]
-		}
+		channels[i].Range = Range10V // USB-20X only supports 10V range
+		channels[i].Slope = gainTable.Slope[i]
+		channels[i].Intercept = gainTable.Intercept[i]
 	}
 	analogInput := AnalogInput{
 		DAQer:             daq,
@@ -277,31 +257,12 @@ func (channels *Channels) Enabled() byte {
 // bit fields:
 //
 //   Bit 0: Transfer mode (0 = block / 1 = immediate)
-//   Bit 1: Pacer output to Sync pin (0 = off / 1 = on) ignored when using an
-//   	      external clock for pacing
-//   Bits 2-4: Trigger settings:
-//               0: No trigger
-//               1: Trigger on rising edge
-//               2: Trigger on falling edge
-//               3: Trigger on high level
-//               4: Trigger on low level
-//   Bit 5: Debug mode:
-//            0 = off; output A/D data
-//            1 = on; output incrementing counter
+//   Bits 1-6: Reserved
 //   Bit 7: Stall on bulk endpoint overrun (0 = yes / 1 = no)
 func (ai *AnalogInput) Options() byte {
 	transferMode := byte(ai.TransferMode)
-	pacer := byte(InternalPacerOff)
-	if ai.OutputPacerOnSync {
-		pacer = byte(InternalPacerOn)
-	}
-	trigger := byte(ai.Trigger)
-	debug := byte(0x0)
-	if ai.DebugMode {
-		debug = byte(0x1)
-	}
 	stall := byte(ai.Stall)
-	return transferMode<<0 | pacer<<1 | trigger<<2 | debug<<5 | stall<<7
+	return transferMode<<0 | stall<<7
 }
 
 // StartAnalogScan starts an analog input scan. If an AInScan is currently
@@ -359,9 +320,10 @@ func (ai *AnalogInput) StartScan(numScans int) error {
 	if ai.UseExternalPacer {
 		freq = 0
 	}
-	data := packScanData(numScans, freq, ai.EnabledChannels(), ai.Options())
-	if len(data) != 10 {
-		fmt.Errorf("StartAnalogScan data is not 10 bytes long.")
+	data := packScanData(numScans, freq, ai.EnabledChannels(), ai.Options(),
+		ai.Trigger)
+	if len(data) != 12 {
+		fmt.Errorf("StartAnalogScan data is not 12 bytes long.")
 	}
 	err := ai.StopScan()
 	if err != nil {
@@ -463,7 +425,7 @@ func (ai *AnalogInput) ClearScanBuffer() error {
 	return nil
 }
 
-// SetScanRanges writes the scan ranges to the USB-1608FS-Plus
+// SetScanRanges writes the scan ranges to the USB DAQ.
 func (ai *AnalogInput) SetScanRanges() error {
 	ranges := make([]byte, 8)
 	for i, channel := range ai.Channels {
@@ -496,7 +458,8 @@ func (ai *AnalogInput) ScanRanges() ([]byte, error) {
 
 // packScanData creates the 10 byte configuration information needed by
 // StartScan.
-func packScanData(numScans int, frequency float64, channels byte, options byte) []byte {
+func packScanData(numScans int, frequency float64,
+	channels, options byte, trigger TriggerType) []byte {
 	// FIXME(mdr): I should probably use binary.Write() instead of using the
 	// brute force method. <https://golang.org/pkg/encoding/binary/#example_Write_multi>
 
@@ -504,9 +467,20 @@ func packScanData(numScans int, frequency float64, channels byte, options byte) 
 	binaryNumScans := make([]byte, 4)
 	binary.LittleEndian.PutUint32(binaryNumScans, uint32(numScans))
 
-	pacerPeriod := calculatePacerPeriod(frequency)
+	// FIXME(mdr): Instead of using the magic number 1, I need to be using the
+	// PID, since the pacer period differs for the USB-201/202 (100 kS/s) vs. the
+	// USB-204 and USB-205 (500 kS/s)
+	pacerPeriod := calculatePacerPeriod(frequency, 4)
 	binaryPacerPeriod := make([]byte, 4)
 	binary.LittleEndian.PutUint32(binaryPacerPeriod, uint32(pacerPeriod))
+
+	var triggerSource byte
+	var triggerMode byte
+
+	if trigger != NoExternalTrigger {
+		triggerSource = 0x1
+		triggerMode = byte(uint8(trigger) - 1)
+	}
 
 	return []byte{
 		binaryNumScans[0],
@@ -519,15 +493,17 @@ func packScanData(numScans int, frequency float64, channels byte, options byte) 
 		binaryPacerPeriod[3],
 		channels,
 		options,
+		triggerSource,
+		triggerMode,
 	}
 }
 
-func calculatePacerPeriod(frequency float64) int {
-	if frequency > maxFrequency {
-		frequency = maxFrequency
+func calculatePacerPeriod(frequency float64, pid int) int {
+	if frequency > maxFrequency[pid] {
+		frequency = maxFrequency[pid]
 	}
 	if frequency > 0 {
-		return round((40e6 / frequency) - 1)
+		return round((70e6 / frequency) - 1)
 	}
 	return 0
 }
@@ -541,7 +517,7 @@ func round(f float64) int {
 
 // ReadAnalogInput reads the value of an analog input channel. This command
 // will result in a bus stall if an AInScan is currenty running.
-func (daq *usb1608fsplus) ReadAnalogInput(channel int, rng VoltageRange) (uint, error) {
+func (daq *usb20x) ReadAnalogInput(channel int, rng VoltageRange) (uint, error) {
 	requestType := libusb.BitmapRequestType(
 		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
 	data := make([]byte, 2)
@@ -634,8 +610,8 @@ func (ch Channel) Volts(data []byte) (float64, error) {
 	if len(data) != 2 {
 		return 0.0, fmt.Errorf("binary value must be 2 bytes")
 	}
-	slope := ch.Slopes[ch.Range]
-	offset := ch.Intercepts[ch.Range]
+	slope := ch.Slope
+	offset := ch.Intercept
 	rawValue := int(binary.LittleEndian.Uint16(data))
 	adjustedValue := adjustRawValue(rawValue, slope, offset)
 	// log.Printf("rawValue = %#x / adjValue = %#x", rawValue, adjustedValue)
