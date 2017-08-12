@@ -39,7 +39,7 @@ type usb1608fsplus struct {
 // Init intializes a new libusb session/context by creating a new Context and
 // returning a pointer to that Context.
 func Init() (*libusb.Context, error) {
-	return libusb.Init()
+	return libusb.NewContext()
 }
 
 // NewViaSN creates a new daq instance by searching through the list of USB

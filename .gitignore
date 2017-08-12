@@ -25,3 +25,5 @@ _testmain.go
 
 # Test coverage profile
 coverage.out
+
+/usb1608fsplus/examples/blink_led/blink_led
