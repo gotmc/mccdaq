@@ -21,18 +21,18 @@ var (
 )
 
 func init() {
-	flag.StringVar(&sn, "sn", "01AF3FAE", "MCC DAQs S/N")
+	flag.StringVar(&sn, "sn", "01ACD31D", "MCC DAQs S/N")
 }
 
 func main() {
 	// Parse the config flags to determine the config JSON filename
 	flag.Parse()
 
-	ctx, err := libusb.Init()
+	ctx, err := libusb.NewContext()
 	if err != nil {
 		log.Fatal("Couldn't create USB context. Ending now.")
 	}
-	defer ctx.Exit()
+	defer ctx.Close()
 
 	// Create the USB-1608FS-Plus DAQ device
 	daq, err := usb1608fsplus.NewViaSN(ctx, sn)
