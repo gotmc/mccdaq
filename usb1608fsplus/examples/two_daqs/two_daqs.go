@@ -36,11 +36,11 @@ func main() {
 	log.Printf("Looking for S/Ns %s and %s", sn1, sn2)
 
 	// Setup the USB context
-	ctx, err := libusb.Init()
+	ctx, err := libusb.NewContext()
 	if err != nil {
 		log.Fatal("Couldn't create USB context. Ending now.")
 	}
-	defer ctx.Exit()
+	defer ctx.Close()
 
 	// Create the USB-1608FS-Plus DAQ devices
 	daq1, err := usb1608fsplus.NewViaSN(ctx, sn1)

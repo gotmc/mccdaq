@@ -163,7 +163,7 @@ func TestRound(t *testing.T) {
 		for _, testCase := range testCases {
 			conveyance := fmt.Sprintf("When %f is provided to the round() function", testCase.preRound)
 			c.Convey(conveyance, func() {
-				conveyance := fmt.Sprintf("Then the result should be %f", testCase.expectedValue)
+				conveyance := fmt.Sprintf("Then the result should be %d", testCase.expectedValue)
 				c.Convey(conveyance, func() {
 					computedValue := round(testCase.preRound)
 					c.So(computedValue, c.ShouldEqual, testCase.expectedValue)

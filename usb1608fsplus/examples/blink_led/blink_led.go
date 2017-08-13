@@ -6,7 +6,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -42,7 +41,7 @@ func main() {
 	numBlinks := 10
 	bytesSent, err := daq.BlinkLED(numBlinks)
 	if err != nil {
-		fmt.Errorf("Error blinking LED %s", err)
+		log.Fatalf("Error blinking LED %s", err)
 	}
 	log.Printf("Sent %d byte of data to blink LED %d times.", bytesSent, numBlinks)
 

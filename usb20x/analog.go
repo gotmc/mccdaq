@@ -323,7 +323,7 @@ func (ai *AnalogInput) StartScan(numScans int) error {
 	data := packScanData(numScans, freq, ai.EnabledChannels(), ai.Options(),
 		ai.Trigger)
 	if len(data) != 12 {
-		fmt.Errorf("StartAnalogScan data is not 12 bytes long.")
+		return fmt.Errorf("StartAnalogScan data is not 12 bytes long.")
 	}
 	err := ai.StopScan()
 	if err != nil {
@@ -385,7 +385,7 @@ func (ai *AnalogInput) ReadScan(numScans int) ([]byte, error) {
 	}
 	status, err := ai.Status()
 	if err != nil {
-		fmt.Errorf("Error getting status during analog bulk read %s", err)
+		return data, fmt.Errorf("Error getting status during analog bulk read %s", err)
 	}
 	// If bytesToRead is a multiple of wMaxPacketSize the device will send a zero
 	// byte packet.

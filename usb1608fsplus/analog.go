@@ -21,6 +21,7 @@ const (
 	bytesPerWord     = 2
 )
 
+// AnalogInput models an analog input for the MCC DAQ.
 type AnalogInput struct {
 	DAQer             `json:"-"`
 	Frequency         float64      `json:"freq"`
@@ -33,6 +34,7 @@ type AnalogInput struct {
 	Channels          Channels     `json:"channels"`
 }
 
+// Channel models a single channel of an analog input.
 type Channel struct {
 	Enabled     bool         `json:"enabled"`
 	Range       VoltageRange `json:"range"`
@@ -41,35 +43,47 @@ type Channel struct {
 	Intercepts  Intercepts   `json:"intercepts"`
 }
 
+// Intercepts contains the offsets based on the voltage range.
 type Intercepts map[VoltageRange]float64
 
+// Channels contains an array of each of the eight Channels.
 type Channels [8]Channel
 
+// InternalPacer models whether the internal pacer is on or off.
 type InternalPacer byte
 
+// Available settings for the InternalPacer
 const (
 	InternalPacerOff InternalPacer = 0x0
 	InternalPacerOn  InternalPacer = 0x1
 )
 
+// Slopes contains the gains based on the voltage range.
 type Slopes map[VoltageRange]float64
 
+// Stall instructs the MCC DAQ on what to do when it encounters a stall.
 type Stall byte
 
+// Available optinos for a stall
 const (
 	StallOnOverrun Stall = 0x0
 	StallInhibited Stall = 0x1
 )
 
+// TransferMode declares whether to perform a block or immediate transfer of
+// data from the MCC DAQ.
 type TransferMode byte
 
+// Available transfer modes.
 const (
 	BlockTransfer     TransferMode = 0x0
 	ImmediateTransfer TransferMode = 0x1
 )
 
+// TriggerType identifies the type of trigger to use.
 type TriggerType byte
 
+// Available TriggerType options.
 const (
 	NoExternalTrigger  TriggerType = 0x0
 	RisingEdgeTrigger  TriggerType = 0x1
@@ -361,7 +375,7 @@ func (ai *AnalogInput) StartScan(numScans int) error {
 	}
 	data := packScanData(numScans, freq, ai.EnabledChannels(), ai.Options())
 	if len(data) != 10 {
-		fmt.Errorf("StartAnalogScan data is not 10 bytes long.")
+		return fmt.Errorf("StartAnalogScan data is not 10 bytes long.")
 	}
 	err := ai.StopScan()
 	if err != nil {
@@ -423,7 +437,7 @@ func (ai *AnalogInput) ReadScan(numScans int) ([]byte, error) {
 	}
 	status, err := ai.Status()
 	if err != nil {
-		fmt.Errorf("Error getting status during analog bulk read %s", err)
+		return data, fmt.Errorf("Error getting status during analog bulk read %s", err)
 	}
 	// If bytesToRead is a multiple of wMaxPacketSize the device will send a zero
 	// byte packet.

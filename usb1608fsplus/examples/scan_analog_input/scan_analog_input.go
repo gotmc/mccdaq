@@ -19,11 +19,11 @@ import (
 const millisecondDelay = 100
 
 func main() {
-	ctx, err := libusb.Init()
+	ctx, err := libusb.NewContext()
 	if err != nil {
 		log.Fatal("Couldn't create USB context. Ending now.")
 	}
-	defer ctx.Exit()
+	defer ctx.Close()
 
 	// Find the first USB fevice with the VendorID and ProductID matching the MCC
 	// USB-1608FS-Plus DAQ
