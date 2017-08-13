@@ -176,6 +176,7 @@ func (daq *usb1608fsplus) ReadCommandFromDevice(cmd command, data []byte) (int, 
 	return bytesReceived, nil
 }
 
+// Read reads the data using a bulk USB transfer.
 func (daq *usb1608fsplus) Read(p []byte) (n int, err error) {
 	return daq.DeviceHandle.BulkTransfer(
 		daq.BulkEndpoint.EndpointAddress,

@@ -1,4 +1,4 @@
-// Copyright (c) 2016 The mccdaq developers. All rights reserved.
+// Copyright (c) 2016-2017 The mccdaq developers. All rights reserved.
 // Project site: https://github.com/gotmc/mccdaq
 // Use of this source code is governed by a MIT-style license that
 // can be found in the LICENSE.txt file for the project.
@@ -388,7 +388,7 @@ func (ai *AnalogInput) NumEnabledChannels() int {
 	return numEnabledChannels
 }
 
-// ReadScan reads the analog input data for the given number of scans
+// ReadScan reads the analog input data for the given number of scans.
 func (ai *AnalogInput) ReadScan(numScans int) ([]byte, error) {
 	bytesInWord := 2
 	wordsToRead := numScans * ai.NumEnabledChannels()
@@ -609,7 +609,12 @@ func (ai *AnalogInput) configureChannel(
 	return nil
 }
 
+// RawVoltages converts the given binary data into a 2D slice of float64s. The
+// binary data is two byte raw integer values by channel and then by scan. The
+// 2D slice has dimensions of channel first and then number of scans.
 func (ai *AnalogInput) RawVoltages(data []byte) ([][]float64, error) {
+	// Check that the given data is a multiple of 2 bytes (1 word) by the number
+	// of channels (8).
 	if len(data)%(bytesPerWord*len(ai.Channels)) != 0 {
 		return nil, fmt.Errorf("data len must be multiple of 2 bytes x 8 channels")
 	}
@@ -630,12 +635,17 @@ func (ai *AnalogInput) RawVoltages(data []byte) ([][]float64, error) {
 	return rawVoltages, nil
 }
 
+// Volts converts a two byte integer into a float64 accounting for the offset,
+// slope, and range of the channel.
 func (ch Channel) Volts(data []byte) (float64, error) {
+	// Confirm we've been given a two byte integer
 	if len(data) != 2 {
 		return 0.0, fmt.Errorf("binary value must be 2 bytes")
 	}
+	// Determine the slope and offset for this channel of the DAQ
 	slope := ch.Slopes[ch.Range]
 	offset := ch.Intercepts[ch.Range]
+	// Calculate the rawValue
 	rawValue := int(binary.LittleEndian.Uint16(data))
 	adjustedValue := adjustRawValue(rawValue, slope, offset)
 	// log.Printf("rawValue = %#x / adjValue = %#x", rawValue, adjustedValue)
