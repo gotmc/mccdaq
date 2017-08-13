@@ -627,7 +627,10 @@ func (ai *AnalogInput) RawVoltages(data []byte) ([][]float64, error) {
 	for scan := 0; scan < scans; scan++ {
 		for i, ch := range ai.Channels {
 			firstByte := word * bytesPerWord
-			raw, _ := VoltsData(data[firstByte:firstByte+2], ch.Range)
+			raw, err := VoltsData(data[firstByte:firstByte+bytesPerWord], ch.Range)
+			if err != nil {
+				return rawVoltages, err
+			}
 			rawVoltages[i][scan] = raw
 			word++
 		}
