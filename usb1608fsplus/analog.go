@@ -566,11 +566,6 @@ func (ai *AnalogInput) EnableChannel(ch int) {
 	ai.Channels[ch].Enabled = true
 }
 
-func (ai *AnalogInput) Voltages(data []byte) ([]float64, error) {
-	// Check that the data is the right size given the number of enabled channels
-	return nil, nil
-}
-
 // DisableChannel disables the given channel without changing any other channel
 // configuration items.
 func (ai *AnalogInput) DisableChannel(ch int) {
@@ -638,6 +633,39 @@ func (ai *AnalogInput) RawVoltages(data []byte) ([][]float64, error) {
 	return rawVoltages, nil
 }
 
+// Voltages calculates the actual voltage reading given the raw binary data,
+// which is converted into a 2D slice by channel and scan taking into account
+// the MCC DAQ's gain, offset, and range for each channel.
+func (ai *AnalogInput) Voltages(data []byte) ([][]float64, error) {
+	// Check that the given data is a multiple of 2 bytes (1 word) by the number
+	// of channels (8).
+	if len(data)%(bytesPerWord*len(ai.Channels)) != 0 {
+		return nil, fmt.Errorf("data len must be multiple of 2 bytes x 8 channels")
+	}
+	scans := len(data) / (bytesPerWord * len(ai.Channels))
+	voltages := make([][]float64, len(ai.Channels))
+	for i := range ai.Channels {
+		voltages[i] = make([]float64, scans)
+	}
+	word := 0
+	slopes := make([]float64, len(ai.Channels))
+	offsets := make([]float64, len(ai.Channels))
+	for i, ch := range ai.Channels {
+		slopes[i] = ch.Slopes[ch.Range]
+		offsets[i] = ch.Intercepts[ch.Range]
+	}
+	for scan := 0; scan < scans; scan++ {
+		for i, ch := range ai.Channels {
+			firstByte := word * bytesPerWord
+			rawValue := int(binary.LittleEndian.Uint16(data[firstByte : firstByte+bytesPerWord]))
+			adjustedValue := adjustRawValue(rawValue, slopes[i], offsets[i])
+			voltages[i][scan] = Volts(adjustedValue, ch.Range)
+			word++
+		}
+	}
+	return voltages, nil
+}
+
 // Volts converts a two byte integer into a float64 accounting for the offset,
 // slope, and range of the channel.
 func (ch Channel) Volts(data []byte) (float64, error) {
@@ -648,7 +676,6 @@ func (ch Channel) Volts(data []byte) (float64, error) {
 	// Determine the slope and offset for this channel of the DAQ
 	slope := ch.Slopes[ch.Range]
 	offset := ch.Intercepts[ch.Range]
-	// Calculate the rawValue
 	rawValue := int(binary.LittleEndian.Uint16(data))
 	adjustedValue := adjustRawValue(rawValue, slope, offset)
 	// log.Printf("rawValue = %#x / adjValue = %#x", rawValue, adjustedValue)
