@@ -77,8 +77,8 @@ func (daq *usb1608fsplus) UpgradeFirmware() error {
 
 // VoltsData converts the 2 byte binary value into the voltage for the given range
 func VoltsData(data []byte, voltageRange VoltageRange) (float64, error) {
-	if len(data) != 2 {
-		return 0.0, fmt.Errorf("binary value must be 2 bytes")
+	if len(data) != bytesPerWord {
+		return 0.0, fmt.Errorf("binary value must be %d bytes", bytesPerWord)
 	}
 	b := int(binary.LittleEndian.Uint16(data))
 	return Volts(b, voltageRange), nil
