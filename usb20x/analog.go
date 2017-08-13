@@ -28,6 +28,7 @@ var maxFrequency = map[int]float64{
 	usb205PID: 500000,
 }
 
+// AnalogInput models the analog inputs for the DAQ.
 type AnalogInput struct {
 	DAQer             `json:"-"`
 	Frequency         float64      `json:"freq"`
@@ -40,6 +41,7 @@ type AnalogInput struct {
 	Channels          Channels     `json:"channels"`
 }
 
+// Channel models an analog input for the DAQ.
 type Channel struct {
 	Enabled     bool         `json:"enabled"`
 	Range       VoltageRange `json:"range"`
@@ -48,31 +50,43 @@ type Channel struct {
 	Intercept   float64      `json:"intercept"`
 }
 
+// Channels is an array of channels since the DAQ has multiple analog inputs.
 type Channels [numChannels]Channel
 
+// InternalPacer contains the byte value so the DAQ knows whether the internal
+// pacer is on or off.
 type InternalPacer byte
 
+// Available options for InternalPacer.
 const (
 	InternalPacerOff InternalPacer = 0x0
 	InternalPacerOn  InternalPacer = 0x1
 )
 
+// Stall contains the byte value so the DAQ knows what to do when stalled.
 type Stall byte
 
+// Available options for stall.
 const (
 	StallOnOverrun Stall = 0x0
 	StallInhibited Stall = 0x1
 )
 
+// TransferMode contains the byte value so the DAQ knows whether to perform a
+// block or immediate transfer.
 type TransferMode byte
 
+// Available transfer modes.
 const (
 	BlockTransfer     TransferMode = 0x0
 	ImmediateTransfer TransferMode = 0x1
 )
 
+// TriggerType contains the byte value used by the DAQ to know what type of
+// trigger.
 type TriggerType byte
 
+// Available trigger types.
 const (
 	NoExternalTrigger  TriggerType = 0x0
 	RisingEdgeTrigger  TriggerType = 0x1
@@ -81,6 +95,7 @@ const (
 	LowLevelTrigger    TriggerType = 0x4
 )
 
+// TriggerTypes maps a string to the actual TriggerType.
 var TriggerTypes = map[string]TriggerType{
 	"none":    NoExternalTrigger,
 	"rising":  RisingEdgeTrigger,
@@ -89,6 +104,8 @@ var TriggerTypes = map[string]TriggerType{
 	"low":     LowLevelTrigger,
 }
 
+// TriggerTypeStrings maps a TriggerType to the string repreentation for the
+// Stringer interface.
 var TriggerTypeStrings = map[TriggerType]string{
 	NoExternalTrigger:  "none",
 	RisingEdgeTrigger:  "rising",
@@ -97,6 +114,7 @@ var TriggerTypeStrings = map[TriggerType]string{
 	LowLevelTrigger:    "low",
 }
 
+// String implements the Stringer interface for TriggerType.
 func (t TriggerType) String() string {
 	return TriggerTypeStrings[t]
 }
@@ -113,6 +131,7 @@ func (st *Stall) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// OnOverrun set the stall using a bool.
 func (st *Stall) OnOverrun(t bool) {
 	if t {
 		*st = StallOnOverrun
@@ -151,6 +170,8 @@ func (mode *TransferMode) MarshalJSON() ([]byte, error) {
 	return json.Marshal(isBlockTransfer)
 }
 
+// BlockMode configures the transfer mode to be block if true or immediate if
+// false.
 func (mode *TransferMode) BlockMode(block bool) {
 	if block {
 		*mode = BlockTransfer
@@ -162,27 +183,28 @@ func (mode *TransferMode) BlockMode(block bool) {
 // UnmarshalJSON implements the Unmarshaler interface for TriggerType by taking
 // a string that matches a key in the TriggerTypes map and finding the
 // appropriate TriggerType value.
-func (trigger *TriggerType) UnmarshalJSON(data []byte) error {
+func (t *TriggerType) UnmarshalJSON(data []byte) error {
 	// Extract the string from data.
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
 		return fmt.Errorf("range should be a string, got %s", data)
 	}
-	return trigger.SetType(s)
+	return t.SetType(s)
 }
 
-func (trigger *TriggerType) SetType(s string) error {
+// SetType sets the trigger type using the given string.
+func (t *TriggerType) SetType(s string) error {
 	got, ok := TriggerTypes[s]
 	if !ok {
 		return fmt.Errorf("Invalid TriggerType %q", s)
 	}
-	*trigger = got
+	*t = got
 	return nil
 }
 
 // MarshalJSON implements the Marshaler interface for TriggerType.
-func (trigger *TriggerType) MarshalJSON() ([]byte, error) {
-	return json.Marshal(TriggerTypeStrings[*trigger])
+func (t *TriggerType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(TriggerTypeStrings[*t])
 }
 
 // UnmarshalJSON implements the Unmarshaler interface for VoltageRange by
@@ -197,6 +219,7 @@ func (vr *VoltageRange) UnmarshalJSON(data []byte) error {
 	return vr.Set(s)
 }
 
+// Set sets the voltage range using the given string.
 func (vr *VoltageRange) Set(s string) error {
 	// Ensure the provided string matches one of the keys in the map
 	got, ok := InputRanges[s]
@@ -239,10 +262,14 @@ func (daq *usb20x) NewAnalogInput() (*AnalogInput, error) {
 	return &analogInput, nil
 }
 
+// EnabledChannels returns a byte with bits set high if the corresponding
+// channel is enabled.
 func (ai *AnalogInput) EnabledChannels() byte {
 	return ai.Channels.Enabled()
 }
 
+// Enabled returns a byte with bits set high if the corresponding channel is
+// enabled.
 func (channels *Channels) Enabled() byte {
 	var enabledChannels byte
 	for i, channel := range channels {
@@ -323,7 +350,8 @@ func (ai *AnalogInput) StartScan(numScans int) error {
 	data := packScanData(numScans, freq, ai.EnabledChannels(), ai.Options(),
 		ai.Trigger)
 	if len(data) != 12 {
-		return fmt.Errorf("StartAnalogScan data is not 12 bytes long.")
+		return fmt.Errorf("analog scan data is %d bytes long; should be 12 bytes long",
+			len(data))
 	}
 	err := ai.StopScan()
 	if err != nil {
@@ -340,6 +368,7 @@ func (ai *AnalogInput) StartScan(numScans int) error {
 	return nil
 }
 
+// NumEnabledChannels returns the number of enabled channels.
 func (ai *AnalogInput) NumEnabledChannels() int {
 	numEnabledChannels := 0
 	for _, channel := range ai.Channels {
@@ -407,7 +436,7 @@ func (ai *AnalogInput) Close() error {
 	return ai.StopScan()
 }
 
-// StopAnalogScan stops the USB-1608FS-Plus's analog input scan if running.
+// StopScan stops the DAQ's analog input scan if running.
 func (ai *AnalogInput) StopScan() error {
 	_, err := ai.SendCommandToDevice(commandAnalogStopScan, nil)
 	if err != nil {
@@ -416,7 +445,7 @@ func (ai *AnalogInput) StopScan() error {
 	return nil
 }
 
-// ClearScanBuffer clears the internal scan endpoint FIFO buffer
+// ClearScanBuffer clears the internal scan endpoint FIFO buffer.
 func (ai *AnalogInput) ClearScanBuffer() error {
 	_, err := ai.SendCommandToDevice(commandAnalogClearBuffer, nil)
 	if err != nil {
@@ -530,7 +559,7 @@ func (daq *usb20x) ReadAnalogInput(channel int, rng VoltageRange) (uint, error) 
 	return uint(value), nil
 }
 
-// ConfigureEnabledChannel both enables and configures a channel. This is a
+// ConfigureEnableChannel both enables and configures a channel. This is a
 // convenience method for ConfigureChannel that enables the channel.
 func (ai *AnalogInput) ConfigureEnableChannel(ch int, voltage, description string) error {
 	return ai.ConfigureChannel(ch, true, voltage, description)
@@ -542,6 +571,7 @@ func (ai *AnalogInput) EnableChannel(ch int) {
 	ai.Channels[ch].Enabled = true
 }
 
+// Voltages is not implemented.
 func (ai *AnalogInput) Voltages(data []byte) ([]float64, error) {
 	// Check that the data is the right size given the number of enabled channels
 	return nil, nil
@@ -561,7 +591,7 @@ func (ai *AnalogInput) ConfigureChannel(
 	// Return error if the voltage range is invalid
 	inputRange, ok := InputRanges[voltage]
 	if !ok {
-		return fmt.Errorf("Voltage input range `%s` is invalid.", inputRange)
+		return fmt.Errorf("voltage input range `%s` is invalid", inputRange)
 	}
 	return ai.configureChannel(ch, enabled, inputRange, description)
 }

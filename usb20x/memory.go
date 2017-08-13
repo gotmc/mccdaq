@@ -13,16 +13,20 @@ import (
 	"github.com/gotmc/libusb"
 )
 
+// Gain contains the slope and intercept/offset for a single channel and a
+// single range.
 type Gain struct {
 	Slope     float64
 	Intercept float64
 }
 
-// FIXME(mdr): Should I use float64 for the gain table? Since the gain table is
-// stored using IEEE-754 4-byte floating point values, maybe we should use
-// float32 here? Using float32 might just cause a problem when using this code
-// on a RPi or other lower powered computing device.
+// GainTable contains all the slopes and intercepts for the DAQ, since the gain
+// differs for each channel and each range.
 type GainTable struct {
+	// FIXME(mdr): Should I use float64 for the gain table? Since the gain table
+	// is stored using IEEE-754 4-byte floating point values, maybe we should use
+	// float32 here? Using float32 might just cause a problem when using this
+	// code on a RPi or other lower powered computing device.
 	Slope     []float64
 	Intercept []float64
 }

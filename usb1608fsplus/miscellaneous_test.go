@@ -28,7 +28,7 @@ func TestConvert10VRangeBinaryValueToVoltage(t *testing.T) {
 			c.Convey(conveyance, func() {
 				conveyance := fmt.Sprintf("Then the voltage should be %.4f V", testCase.voltage)
 				c.Convey(conveyance, func() {
-					computedValue, _ := VoltsData(testCase.binaryValue, testCase.voltageRange)
+					computedValue, _ := VoltsFromWord(testCase.binaryValue, testCase.voltageRange)
 					c.So(computedValue, c.ShouldAlmostEqual, testCase.voltage)
 				})
 			})
@@ -52,7 +52,7 @@ func TestConvert5VRangeBinaryValueToVoltage(t *testing.T) {
 			c.Convey(conveyance, func() {
 				conveyance := fmt.Sprintf("Then the voltage should be %.4f V", testCase.voltage)
 				c.Convey(conveyance, func() {
-					computedValue, _ := VoltsData(testCase.binaryValue, testCase.voltageRange)
+					computedValue, _ := VoltsFromWord(testCase.binaryValue, testCase.voltageRange)
 					c.So(computedValue, c.ShouldAlmostEqual, testCase.voltage)
 				})
 			})

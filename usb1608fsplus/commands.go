@@ -94,9 +94,11 @@ const (
 	maxBulkTransferPacketSize      = 64
 )
 
+// VoltageRange is a byte value used by the DAQ to determine the voltage range
+// for the analog input.
 type VoltageRange byte
 
-// Ranges
+// Available voltage ranges
 const (
 	Range10V    VoltageRange = 0x0 // ±10V
 	Range5V     VoltageRange = 0x1 // ±5V
@@ -104,7 +106,7 @@ const (
 	Range2V     VoltageRange = 0x3 // ±2V
 	Range1_25V  VoltageRange = 0x4 // ±1.25V
 	Range1V     VoltageRange = 0x5 // ±1V
-	Range_625V  VoltageRange = 0x6 // ±0.625V
+	Range0_625V VoltageRange = 0x6 // ±0.625V
 	Range_3125V VoltageRange = 0x7 // ±0.3125V
 )
 
@@ -131,10 +133,13 @@ var voltageRanges = map[VoltageRange]string{
 	Range1V:  "±1V",
 }
 
+// String implements the Stringer interface for VoltageRange
 func (v VoltageRange) String() string {
 	return voltageRanges[v]
 }
 
+// VoltageMultiplier maps a VoltageRange to the float64 multipler value for
+// that range.
 var VoltageMultiplier = map[VoltageRange]float64{
 	Range10V: 10.0,
 	Range5V:  5.0,

@@ -79,7 +79,7 @@ func NewViaSN(ctx *libusb.Context, sn string) (*usb1608fsplus, error) {
 		}
 	}
 	// Close the list of devices
-	return &daq, fmt.Errorf("Couldn't find USB-1608FS-Plus S/N %s.", sn)
+	return &daq, fmt.Errorf("couldn't find daq %s", sn)
 }
 
 // GetFirstDevice creates a new instance of a daq using the first
@@ -88,7 +88,7 @@ func GetFirstDevice(ctx *libusb.Context) (*usb1608fsplus, error) {
 	var daq usb1608fsplus
 	dev, dh, err := ctx.OpenDeviceWithVendorProduct(vendorID, productID)
 	if err != nil {
-		return &daq, fmt.Errorf("Error opening the USB-1608FS-Plus using the VendorID and ProductID, %s", err)
+		return &daq, fmt.Errorf("error opening the daq, %s", err)
 	}
 	return create(dev, dh)
 }
@@ -157,7 +157,7 @@ func (daq *usb1608fsplus) SendCommandToDevice(cmd command, data []byte) (int, er
 	bytesReceived, err := daq.DeviceHandle.ControlTransfer(
 		requestType, byte(cmd), 0x0, 0x0, data, len(data), daq.Timeout)
 	if err != nil {
-		return bytesReceived, fmt.Errorf("Error sending command '%s' to device: %s", cmd, err)
+		return bytesReceived, fmt.Errorf("error sending command '%s' to device: %s", cmd, err)
 	}
 	return bytesReceived, nil
 }
@@ -171,7 +171,7 @@ func (daq *usb1608fsplus) ReadCommandFromDevice(cmd command, data []byte) (int, 
 	bytesReceived, err := daq.DeviceHandle.ControlTransfer(
 		requestType, byte(cmd), 0x0, 0x0, data, len(data), daq.Timeout)
 	if err != nil {
-		return bytesReceived, fmt.Errorf("Error reading command '%s' from device: %s", cmd, err)
+		return bytesReceived, fmt.Errorf("error reading command '%s' from device: %s", cmd, err)
 	}
 	return bytesReceived, nil
 }

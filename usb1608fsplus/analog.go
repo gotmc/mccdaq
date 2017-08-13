@@ -92,6 +92,7 @@ const (
 	LowLevelTrigger    TriggerType = 0x4
 )
 
+// TriggerTypes maps a string to the actual TriggerType.
 var TriggerTypes = map[string]TriggerType{
 	"none":    NoExternalTrigger,
 	"rising":  RisingEdgeTrigger,
@@ -100,6 +101,8 @@ var TriggerTypes = map[string]TriggerType{
 	"low":     LowLevelTrigger,
 }
 
+// TriggerTypeStrings maps a TriggerType to a string representation for use by
+// Stringer.
 var TriggerTypeStrings = map[TriggerType]string{
 	NoExternalTrigger:  "none",
 	RisingEdgeTrigger:  "rising",
@@ -108,6 +111,7 @@ var TriggerTypeStrings = map[TriggerType]string{
 	LowLevelTrigger:    "low",
 }
 
+// String implements the Stringer interface for TriggerType.
 func (t TriggerType) String() string {
 	return TriggerTypeStrings[t]
 }
@@ -180,6 +184,7 @@ func (mode *TransferMode) MarshalJSON() ([]byte, error) {
 	return json.Marshal(isBlockTransfer)
 }
 
+// BlockMode uses a boolean to either set block or immediate transfer mode.
 func (mode *TransferMode) BlockMode(block bool) {
 	if block {
 		*mode = BlockTransfer
@@ -191,27 +196,27 @@ func (mode *TransferMode) BlockMode(block bool) {
 // UnmarshalJSON implements the Unmarshaler interface for TriggerType by taking
 // a string that matches a key in the TriggerTypes map and finding the
 // appropriate TriggerType value.
-func (trigger *TriggerType) UnmarshalJSON(data []byte) error {
+func (t *TriggerType) UnmarshalJSON(data []byte) error {
 	// Extract the string from data.
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
 		return fmt.Errorf("range should be a string, got %s", data)
 	}
-	return trigger.SetType(s)
+	return t.SetType(s)
 }
 
-func (trigger *TriggerType) SetType(s string) error {
+func (t *TriggerType) SetType(s string) error {
 	got, ok := TriggerTypes[s]
 	if !ok {
-		return fmt.Errorf("Invalid TriggerType %q", s)
+		return fmt.Errorf("invalid string `%q` for TriggerType", s)
 	}
-	*trigger = got
+	*t = got
 	return nil
 }
 
 // MarshalJSON implements the Marshaler interface for TriggerType.
-func (trigger *TriggerType) MarshalJSON() ([]byte, error) {
-	return json.Marshal(TriggerTypeStrings[*trigger])
+func (t *TriggerType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(TriggerTypeStrings[*t])
 }
 
 // UnmarshalJSON implements the Unmarshaler interface for VoltageRange by
@@ -318,7 +323,7 @@ func (ai *AnalogInput) Options() byte {
 	return transferMode<<0 | pacer<<1 | trigger<<2 | debug<<5 | stall<<7
 }
 
-// StartAnalogScan starts an analog input scan. If an AInScan is currently
+// StartScan starts an analog input scan. If an AInScan is currently
 // running, the bus will stall. The USB-1608FS-Plus will not generate an
 // internal pacer faster than 100 kHz.
 //
@@ -375,19 +380,19 @@ func (ai *AnalogInput) StartScan(numScans int) error {
 	}
 	data := packScanData(numScans, freq, ai.EnabledChannels(), ai.Options())
 	if len(data) != 10 {
-		return fmt.Errorf("StartAnalogScan data is not 10 bytes long.")
+		return fmt.Errorf("scan data length is %d bytes; expected 10 bytes", len(data))
 	}
 	err := ai.StopScan()
 	if err != nil {
-		return fmt.Errorf("Error stopping analog scan prior to starting a new scan %s", err)
+		return fmt.Errorf("error stopping analog scan prior to starting a new scan: %s", err)
 	}
 	err = ai.ClearScanBuffer()
 	if err != nil {
-		return fmt.Errorf("Error clearing buffer prior to starting a new scan %s", err)
+		return fmt.Errorf("error clearing buffer prior to starting a new scan %s", err)
 	}
 	_, err = ai.SendCommandToDevice(commandAnalogStartScan, data)
 	if err != nil {
-		return fmt.Errorf("Error starting analog input scan %s", err)
+		return fmt.Errorf("error starting analog input scan %s", err)
 	}
 	return nil
 }
@@ -459,7 +464,7 @@ func (ai *AnalogInput) Close() error {
 	return ai.StopScan()
 }
 
-// StopAnalogScan stops the USB-1608FS-Plus's analog input scan if running.
+// StopScan stops the USB-1608FS-Plus's analog input scan if running.
 func (ai *AnalogInput) StopScan() error {
 	_, err := ai.SendCommandToDevice(commandAnalogStopScan, nil)
 	if err != nil {
@@ -568,7 +573,7 @@ func (daq *usb1608fsplus) ReadAnalogInput(channel int, rng VoltageRange) (uint, 
 	return uint(value), nil
 }
 
-// ConfigureEnabledChannel both enables and configures a channel. This is a
+// ConfigureEnableChannel both enables and configures a channel. This is a
 // convenience method for ConfigureChannel that enables the channel.
 func (ai *AnalogInput) ConfigureEnableChannel(ch int, voltage, description string) error {
 	return ai.ConfigureChannel(ch, true, voltage, description)
@@ -594,7 +599,7 @@ func (ai *AnalogInput) ConfigureChannel(
 	// Return error if the voltage range is invalid
 	inputRange, ok := InputRanges[voltage]
 	if !ok {
-		return fmt.Errorf("Voltage input range `%s` is invalid.", inputRange)
+		return fmt.Errorf("voltage input range `%s` is invalid", inputRange)
 	}
 	return ai.configureChannel(ch, enabled, inputRange, description)
 }
@@ -607,7 +612,7 @@ func (ai *AnalogInput) configureChannel(
 
 	// Return error if the channel is invalid
 	if ch < 0 || ch >= len(ai.Channels) {
-		return fmt.Errorf("Channel %d outside valid range", ch)
+		return fmt.Errorf("channel %d outside valid range", ch)
 	}
 
 	// Configure the channel
@@ -636,7 +641,7 @@ func (ai *AnalogInput) RawVoltages(data []byte) ([][]float64, error) {
 	for scan := 0; scan < scans; scan++ {
 		for i, ch := range ai.Channels {
 			firstByte := word * bytesPerWord
-			raw, err := VoltsData(data[firstByte:firstByte+bytesPerWord], ch.Range)
+			raw, err := VoltsFromWord(data[firstByte:firstByte+bytesPerWord], ch.Range)
 			if err != nil {
 				return rawVoltages, err
 			}
@@ -673,7 +678,7 @@ func (ai *AnalogInput) Voltages(data []byte) ([][]float64, error) {
 			firstByte := word * bytesPerWord
 			rawValue := int(binary.LittleEndian.Uint16(data[firstByte : firstByte+bytesPerWord]))
 			adjustedValue := adjustRawValue(rawValue, slopes[i], offsets[i])
-			voltages[i][scan] = Volts(adjustedValue, ch.Range)
+			voltages[i][scan] = VoltsFromInt(adjustedValue, ch.Range)
 			word++
 		}
 	}
@@ -692,10 +697,11 @@ func (ch Channel) Volts(data []byte) (float64, error) {
 	offset := ch.Intercepts[ch.Range]
 	rawValue := int(binary.LittleEndian.Uint16(data))
 	adjustedValue := adjustRawValue(rawValue, slope, offset)
-	// log.Printf("rawValue = %#x / adjValue = %#x", rawValue, adjustedValue)
-	return Volts(adjustedValue, ch.Range), nil
+	return VoltsFromInt(adjustedValue, ch.Range), nil
 }
 
+// adjustRawValue takes a raw value as an int and adjusts it to account for the
+// gain and offset.
 func adjustRawValue(value int, slope, offset float64) int {
 	adjFloat := float64(value)*slope + offset
 	return roundFloatToInt(adjFloat)

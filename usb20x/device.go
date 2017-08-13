@@ -83,7 +83,7 @@ func NewViaSN(ctx *libusb.Context, sn string) (*usb20x, error) {
 		}
 	}
 	// Close the list of devices
-	return &daq, fmt.Errorf("Couldn't find USB-1608FS-Plus S/N %s.", sn)
+	return &daq, fmt.Errorf("couldn't find device s/n %s", sn)
 }
 
 // GetFirstUSB201 creates a new instance of a daq using the first
