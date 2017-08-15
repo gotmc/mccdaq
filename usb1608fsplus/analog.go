@@ -15,12 +15,6 @@ import (
 	"github.com/gotmc/libusb"
 )
 
-const (
-	maxFrequency     = 500000
-	defaultFrequency = 10000
-	bytesPerWord     = 2
-)
-
 // AnalogInput models an analog input for the MCC DAQ.
 type AnalogInput struct {
 	DAQer             `json:"-"`
@@ -641,7 +635,7 @@ func (ai *AnalogInput) RawVoltages(data []byte) ([][]float64, error) {
 	for scan := 0; scan < scans; scan++ {
 		for i, ch := range ai.Channels {
 			firstByte := word * bytesPerWord
-			raw, err := VoltsFromWord(data[firstByte:firstByte+bytesPerWord], ch.Range)
+			raw, err := RawVoltsFromWord(data[firstByte:firstByte+bytesPerWord], ch.Range)
 			if err != nil {
 				return rawVoltages, err
 			}
@@ -688,28 +682,5 @@ func (ai *AnalogInput) Voltages(data []byte) ([][]float64, error) {
 // Volts converts a two byte integer into a float64 accounting for the offset,
 // slope, and range of the channel.
 func (ch Channel) Volts(data []byte) (float64, error) {
-	// Confirm we've been given a two byte integer
-	if len(data) != 2 {
-		return 0.0, fmt.Errorf("binary value must be 2 bytes")
-	}
-	// Determine the slope and offset for this channel of the DAQ
-	slope := ch.Slopes[ch.Range]
-	offset := ch.Intercepts[ch.Range]
-	rawValue := int(binary.LittleEndian.Uint16(data))
-	adjustedValue := adjustRawValue(rawValue, slope, offset)
-	return VoltsFromInt(adjustedValue, ch.Range), nil
-}
-
-// adjustRawValue takes a raw value as an int and adjusts it to account for the
-// gain and offset.
-func adjustRawValue(value int, slope, offset float64) int {
-	adjFloat := float64(value)*slope + offset
-	return roundFloatToInt(adjFloat)
-}
-
-func roundFloatToInt(f float64) int {
-	if math.Abs(f) < 0.5 {
-		return 0
-	}
-	return int(f + math.Copysign(0.5, f))
+	return VoltsFromWord(data, ch.Range, ch.Slopes[ch.Range], ch.Intercepts[ch.Range])
 }

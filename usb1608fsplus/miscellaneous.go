@@ -75,8 +75,21 @@ func (daq *usb1608fsplus) UpgradeFirmware() error {
 	return nil
 }
 
-// VoltsFromWord converts the 2 byte binary value into the voltage for the given range
-func VoltsFromWord(data []byte, voltageRange VoltageRange) (float64, error) {
+// VoltsFromWord takes a 2 byte binary unsigned integer and converts it to a
+// voltage taking into account the offset, slope, and voltage range.
+func VoltsFromWord(data []byte, voltageRange VoltageRange,
+	slope, offset float64) (float64, error) {
+	if len(data) != bytesPerWord {
+		return 0.0, fmt.Errorf("binary value must be %d bytes", bytesPerWord)
+	}
+	rawValue := int(binary.LittleEndian.Uint16(data))
+	adjustedValue := adjustRawValue(rawValue, slope, offset)
+	return VoltsFromInt(adjustedValue, voltageRange), nil
+}
+
+// RawVoltsFromWord converts the 2 byte binary value into the voltage for the
+// given range
+func RawVoltsFromWord(data []byte, voltageRange VoltageRange) (float64, error) {
 	if len(data) != bytesPerWord {
 		return 0.0, fmt.Errorf("binary value must be %d bytes", bytesPerWord)
 	}
@@ -84,14 +97,9 @@ func VoltsFromWord(data []byte, voltageRange VoltageRange) (float64, error) {
 	return VoltsFromInt(b, voltageRange), nil
 }
 
-// Volts converts the unsigned binary value into the voltage for the given
-// range
+// VoltsFromInt converts the unsigned binary value into the voltage for the
+// given range
 func VoltsFromInt(b int, voltageRange VoltageRange) float64 {
-	// Since each binary encoded value is 16-bits (2 bytes), the converter value
-	// is 0x8000, which is 32768.
-	const (
-		converter = 32768
-	)
 	signedInt := b - converter
 	value := VoltageMultiplier[voltageRange] * float64(signedInt) / converter
 	return value
@@ -99,4 +107,18 @@ func VoltsFromInt(b int, voltageRange VoltageRange) float64 {
 
 func float32From2Bytes(data []byte) float32 {
 	return math.Float32frombits(uint32(binary.LittleEndian.Uint16(data)))
+}
+
+// adjustRawValue takes a raw value as an int and adjusts it to account for the
+// gain and offset.
+func adjustRawValue(value int, slope, offset float64) int {
+	adjFloat := float64(value)*slope + offset
+	return roundFloatToInt(adjFloat)
+}
+
+func roundFloatToInt(f float64) int {
+	if math.Abs(f) < 0.5 {
+		return 0
+	}
+	return int(f + math.Copysign(0.5, f))
 }

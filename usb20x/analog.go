@@ -292,7 +292,7 @@ func (ai *AnalogInput) Options() byte {
 	return transferMode<<0 | stall<<7
 }
 
-// StartAnalogScan starts an analog input scan. If an AInScan is currently
+// StartScan starts an analog input scan. If an AInScan is currently
 // running, the bus will stall. The USB-1608FS-Plus will not generate an
 // internal pacer faster than 100 kHz.
 //
