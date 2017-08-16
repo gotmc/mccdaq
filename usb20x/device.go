@@ -27,6 +27,7 @@ const (
 	usb205PID = 0x012c
 )
 
+// DAQer defines the interface required for a DAQ.
 type DAQer interface {
 	SendCommandToDevice(cmd command, data []byte) (int, error)
 	ReadCommandFromDevice(cmd command, data []byte) (int, error)

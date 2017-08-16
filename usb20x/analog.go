@@ -615,6 +615,9 @@ func (ai *AnalogInput) configureChannel(
 	return nil
 }
 
+// RawVoltages converts the given binary data into a 2D slice of float64s. The
+// binary data is two byte raw integer values by channel and then by scan. The
+// 2D slice has dimensions of channel first and then number of scans.
 func (ai *AnalogInput) RawVoltages(data []byte) ([][]float64, error) {
 	if len(data)%(bytesPerWord*len(ai.Channels)) != 0 {
 		return nil, fmt.Errorf("data len must be multiple of 2 bytes x 8 channels")
@@ -636,6 +639,8 @@ func (ai *AnalogInput) RawVoltages(data []byte) ([][]float64, error) {
 	return rawVoltages, nil
 }
 
+// Volts converts a two byte integer into a float64 accounting for the offset,
+// slope, and range of the channel.
 func (ch Channel) Volts(data []byte) (float64, error) {
 	if len(data) != 2 {
 		return 0.0, fmt.Errorf("binary value must be 2 bytes")

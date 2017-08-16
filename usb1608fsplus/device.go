@@ -20,6 +20,7 @@ const (
 	msSleepTime    = 500
 )
 
+// DAQer defines the interface required for a DAQ.
 type DAQer interface {
 	SendCommandToDevice(cmd command, data []byte) (int, error)
 	ReadCommandFromDevice(cmd command, data []byte) (int, error)
@@ -117,6 +118,7 @@ func create(dev *libusb.Device, dh *libusb.DeviceHandle) (*usb1608fsplus, error)
 	return &daq, nil
 }
 
+// Close implements the Closer interface for usb1608fsplus
 func (daq *usb1608fsplus) Close() error {
 	// Release the interface and close up shop
 	err := daq.DeviceHandle.ReleaseInterface(0)

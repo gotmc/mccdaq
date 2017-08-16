@@ -140,6 +140,7 @@ func (st *Stall) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// OnOverrun enables StallOnOverrun using a boolean.
 func (st *Stall) OnOverrun(t bool) {
 	if t {
 		*st = StallOnOverrun
@@ -199,6 +200,7 @@ func (t *TriggerType) UnmarshalJSON(data []byte) error {
 	return t.SetType(s)
 }
 
+// SetType sets the type of trigger using a string.
 func (t *TriggerType) SetType(s string) error {
 	got, ok := TriggerTypes[s]
 	if !ok {
@@ -225,6 +227,7 @@ func (vr *VoltageRange) UnmarshalJSON(data []byte) error {
 	return vr.Set(s)
 }
 
+// Set sets the voltage range using a string.
 func (vr *VoltageRange) Set(s string) error {
 	// Ensure the provided string matches one of the keys in the map
 	got, ok := InputRanges[s]
@@ -272,10 +275,14 @@ func (daq *usb1608fsplus) NewAnalogInput() (*AnalogInput, error) {
 	return &analogInput, nil
 }
 
+// EnabledChannels returns a byte as an 8-bit flag identifying the enabled
+// analog input channels.
 func (ai *AnalogInput) EnabledChannels() byte {
 	return ai.Channels.Enabled()
 }
 
+// Enabled returns a byte as an 8-bit flag identifying the enabled analog input
+// channels.
 func (channels *Channels) Enabled() byte {
 	var enabledChannels byte
 	for i, channel := range channels {
@@ -391,6 +398,8 @@ func (ai *AnalogInput) StartScan(numScans int) error {
 	return nil
 }
 
+// NumEnabledChannels returns the number of enabled analog input channels on
+// the DAQ.
 func (ai *AnalogInput) NumEnabledChannels() int {
 	numEnabledChannels := 0
 	for _, channel := range ai.Channels {
