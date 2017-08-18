@@ -572,7 +572,7 @@ func (daq *usb1608fsplus) ReadAnalogInput(channel int, rng VoltageRange) (uint, 
 	if err != nil {
 		return 0, fmt.Errorf("Error reading analog input %s", err)
 	}
-	value := binary.LittleEndian.Uint16(data)
+	value := DecodeWord(data)
 	return uint(value), nil
 }
 
@@ -679,9 +679,12 @@ func (ai *AnalogInput) Voltages(data []byte) ([][]float64, error) {
 	for scan := 0; scan < scans; scan++ {
 		for i, ch := range ai.Channels {
 			firstByte := word * bytesPerWord
-			rawValue := int(binary.LittleEndian.Uint16(data[firstByte : firstByte+bytesPerWord]))
-			adjustedValue := adjustRawValue(rawValue, slopes[i], offsets[i])
-			voltages[i][scan] = VoltsFromInt(adjustedValue, ch.Range)
+			voltage, err := VoltsFromWord(
+				data[firstByte:firstByte+bytesPerWord], ch.Range, slopes[i], offsets[i])
+			if err != nil {
+				return voltages, err
+			}
+			voltages[i][scan] = voltage
 			word++
 		}
 	}

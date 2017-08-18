@@ -29,26 +29,26 @@ func TestValidCalMemoryRange(t *testing.T) {
 		{0x2ff, 2, false},
 	}
 	c.Convey("Given the need to validate the calibration memory range", t, func() {
-		for _, testCase := range testCases {
+		for _, tc := range testCases {
 			bytePlurality := "bytes"
-			if testCase.count == 1 {
+			if tc.count == 1 {
 				bytePlurality = "byte"
 			}
 			conveyance := fmt.Sprintf(
 				"When reading %d %s starting at address %x",
-				testCase.count,
+				tc.count,
 				bytePlurality,
-				testCase.address,
+				tc.address,
 			)
 			c.Convey(conveyance, func() {
 				validity := "invalid"
-				if testCase.valid {
+				if tc.valid {
 					validity = "valid"
 				}
 				conveyance := fmt.Sprintf("Then the cal memory range is %s", validity)
 				c.Convey(conveyance, func() {
-					computedValue := validCalMemoryRange(testCase.address, testCase.count)
-					c.So(computedValue, c.ShouldResemble, testCase.valid)
+					computedValue := validCalMemoryRange(tc.address, tc.count)
+					c.So(computedValue, c.ShouldResemble, tc.valid)
 				})
 			})
 		}
@@ -65,13 +65,13 @@ func TestConvertBytesToFloat(t *testing.T) {
 		{[]byte{0x4f, 0xd2, 0x93, 0x3f}, 1.1548556},
 	}
 	c.Convey("Given the need to convert IEEE 754 4-byte numbers", t, func() {
-		for _, testCase := range testCases {
-			conveyance := fmt.Sprintf("When given the 4 bytes: %#x", testCase.data)
+		for _, tc := range testCases {
+			conveyance := fmt.Sprintf("When given the 4 bytes: %#x", tc.data)
 			c.Convey(conveyance, func() {
-				conveyance := fmt.Sprintf("Then the value should be %f", testCase.output)
+				conveyance := fmt.Sprintf("Then the value should be %f", tc.output)
 				c.Convey(conveyance, func() {
-					given := testCase.output
-					calculated := convertBytesToFloat32(testCase.data)
+					given := tc.output
+					calculated := convertBytesToFloat32(tc.data)
 					c.So(calculated, c.ShouldAlmostEqual, given)
 				})
 			})
