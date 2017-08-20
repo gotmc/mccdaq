@@ -27,3 +27,6 @@ _testmain.go
 coverage.out
 
 /usb1608fsplus/examples/blink_led/blink_led
+/usb1608fsplus/examples/find_by_sn/find_by_sn
+/usb1608fsplus/examples/gain_table/gain_table
+/usb1608fsplus/examples/scan_analog_input/scan_analog_input

@@ -17,7 +17,7 @@ import (
 
 // AnalogInput models an analog input for the MCC DAQ.
 type AnalogInput struct {
-	DAQer             `json:"-"`
+	DAQ               DAQer        `json:"-"`
 	Frequency         float64      `json:"freq"`
 	TransferMode      TransferMode `json:"block_transfer"`
 	Trigger           TriggerType  `json:"trigger"`
@@ -43,72 +43,8 @@ type Intercepts map[VoltageRange]float64
 // Channels contains an array of each of the eight Channels.
 type Channels [8]Channel
 
-// InternalPacer models whether the internal pacer is on or off.
-type InternalPacer byte
-
-// Available settings for the InternalPacer
-const (
-	InternalPacerOff InternalPacer = 0x0
-	InternalPacerOn  InternalPacer = 0x1
-)
-
 // Slopes contains the gains based on the voltage range.
 type Slopes map[VoltageRange]float64
-
-// Stall instructs the MCC DAQ on what to do when it encounters a stall.
-type Stall byte
-
-// Available optinos for a stall
-const (
-	StallOnOverrun Stall = 0x0
-	StallInhibited Stall = 0x1
-)
-
-// TransferMode declares whether to perform a block or immediate transfer of
-// data from the MCC DAQ.
-type TransferMode byte
-
-// Available transfer modes.
-const (
-	BlockTransfer     TransferMode = 0x0
-	ImmediateTransfer TransferMode = 0x1
-)
-
-// TriggerType identifies the type of trigger to use.
-type TriggerType byte
-
-// Available TriggerType options.
-const (
-	NoExternalTrigger  TriggerType = 0x0
-	RisingEdgeTrigger  TriggerType = 0x1
-	FallingEdgeTrigger TriggerType = 0x2
-	HighLevelTrigger   TriggerType = 0x3
-	LowLevelTrigger    TriggerType = 0x4
-)
-
-// TriggerTypes maps a string to the actual TriggerType.
-var TriggerTypes = map[string]TriggerType{
-	"none":    NoExternalTrigger,
-	"rising":  RisingEdgeTrigger,
-	"falling": FallingEdgeTrigger,
-	"high":    HighLevelTrigger,
-	"low":     LowLevelTrigger,
-}
-
-// TriggerTypeStrings maps a TriggerType to a string representation for use by
-// Stringer.
-var TriggerTypeStrings = map[TriggerType]string{
-	NoExternalTrigger:  "none",
-	RisingEdgeTrigger:  "rising",
-	FallingEdgeTrigger: "falling",
-	HighLevelTrigger:   "high",
-	LowLevelTrigger:    "low",
-}
-
-// String implements the Stringer interface for TriggerType.
-func (t TriggerType) String() string {
-	return TriggerTypeStrings[t]
-}
 
 // MarshalJSON implements the Marshaler interface for Slopes.
 func (s *Slopes) MarshalJSON() ([]byte, error) {
@@ -126,93 +62,6 @@ func (i *Intercepts) MarshalJSON() ([]byte, error) {
 		intercepter[voltageRangeJSON[k]] = v
 	}
 	return json.Marshal(intercepter)
-}
-
-// UnmarshalJSON implements the Unmarshaler interface for Stall.
-func (st *Stall) UnmarshalJSON(data []byte) error {
-	// Extract the boolean from data.
-	var stall bool
-	if err := json.Unmarshal(data, &stall); err != nil {
-		return fmt.Errorf("stall should be a boolean, got %s", data)
-	}
-
-	st.OnOverrun(stall)
-	return nil
-}
-
-// OnOverrun enables StallOnOverrun using a boolean.
-func (st *Stall) OnOverrun(t bool) {
-	if t {
-		*st = StallOnOverrun
-	} else {
-		*st = StallInhibited
-	}
-}
-
-// MarshalJSON implements the Marshaler interface for Stall.
-func (st *Stall) MarshalJSON() ([]byte, error) {
-	stall := false
-	if *st == StallOnOverrun {
-		stall = true
-	}
-	return json.Marshal(stall)
-}
-
-// UnmarshalJSON implements the Unmarshaler interface for TransferMode by
-// converting the JSON boolean value into the correct TransferMode value.
-func (mode *TransferMode) UnmarshalJSON(data []byte) error {
-	// Extract the boolean from data.
-	var block bool
-	if err := json.Unmarshal(data, &block); err != nil {
-		return fmt.Errorf("block_transfer should be a boolean, got %s", data)
-	}
-	mode.BlockMode(block)
-	return nil
-}
-
-// MarshalJSON implements the Marshaler interface for TransferMode.
-func (mode *TransferMode) MarshalJSON() ([]byte, error) {
-	isBlockTransfer := false
-	if *mode == BlockTransfer {
-		isBlockTransfer = true
-	}
-	return json.Marshal(isBlockTransfer)
-}
-
-// BlockMode uses a boolean to either set block or immediate transfer mode.
-func (mode *TransferMode) BlockMode(block bool) {
-	if block {
-		*mode = BlockTransfer
-	} else {
-		*mode = ImmediateTransfer
-	}
-}
-
-// UnmarshalJSON implements the Unmarshaler interface for TriggerType by taking
-// a string that matches a key in the TriggerTypes map and finding the
-// appropriate TriggerType value.
-func (t *TriggerType) UnmarshalJSON(data []byte) error {
-	// Extract the string from data.
-	var s string
-	if err := json.Unmarshal(data, &s); err != nil {
-		return fmt.Errorf("range should be a string, got %s", data)
-	}
-	return t.SetType(s)
-}
-
-// SetType sets the type of trigger using a string.
-func (t *TriggerType) SetType(s string) error {
-	got, ok := TriggerTypes[s]
-	if !ok {
-		return fmt.Errorf("invalid string `%q` for TriggerType", s)
-	}
-	*t = got
-	return nil
-}
-
-// MarshalJSON implements the Marshaler interface for TriggerType.
-func (t *TriggerType) MarshalJSON() ([]byte, error) {
-	return json.Marshal(TriggerTypeStrings[*t])
 }
 
 // UnmarshalJSON implements the Unmarshaler interface for VoltageRange by
@@ -245,12 +94,12 @@ func (vr *VoltageRange) MarshalJSON() ([]byte, error) {
 }
 
 // NewAnalogInput is used to create a new AnalogInput for the given DAQer.
-func (daq *usb1608fsplus) NewAnalogInput() (*AnalogInput, error) {
+func (daq *USB1608fsplus) NewAnalogInput() (*AnalogInput, error) {
 	gainTable, err := daq.BuildGainTable()
 	if err != nil {
 		return nil, fmt.Errorf("Error reading gain table from DAQ: %s", err)
 	}
-	var channels [8]Channel
+	var channels [numChannels]Channel
 	for i := 0; i < len(channels); i++ {
 		channels[i].Range = Range10V
 		channels[i].Slopes = make(map[VoltageRange]float64)
@@ -262,7 +111,7 @@ func (daq *usb1608fsplus) NewAnalogInput() (*AnalogInput, error) {
 		}
 	}
 	analogInput := AnalogInput{
-		DAQer:             daq,
+		DAQ:               daq,
 		Frequency:         defaultFrequency,
 		TransferMode:      BlockTransfer,
 		Trigger:           NoExternalTrigger,
@@ -391,7 +240,7 @@ func (ai *AnalogInput) StartScan(numScans int) error {
 	if err != nil {
 		return fmt.Errorf("error clearing buffer prior to starting a new scan %s", err)
 	}
-	_, err = ai.SendCommandToDevice(commandAnalogStartScan, data)
+	_, err = ai.DAQ.SendCommandToDevice(commandAnalogStartScan, data)
 	if err != nil {
 		return fmt.Errorf("error starting analog input scan %s", err)
 	}
@@ -410,56 +259,62 @@ func (ai *AnalogInput) NumEnabledChannels() int {
 	return numEnabledChannels
 }
 
-// ReadScan reads the analog input data for the given number of scans.
-func (ai *AnalogInput) ReadScan(numScans int) ([]byte, error) {
-	bytesInWord := 2
-	wordsToRead := numScans * ai.NumEnabledChannels()
-	bytesToRead := wordsToRead * bytesInWord
+// Read reads the analog input data. The number of scans is based on the size
+// of the given byte slice. This function replaces the old ReadScan(numScans int)
+// ([]byte, error), since that put pressure on the garabage collector by requiring
+// an allocation every time the function was called, since it returned a byte slice.
+func (ai *AnalogInput) Read(p []byte) (n int, err error) {
+	bytesToRead := len(p)
+	wordsToRead := bytesToRead / bytesPerWord
 	if (bytesToRead % maxBulkTransferPacketSize) != 0 {
-		return nil, fmt.Errorf("Bytes to read not a multiple of maxBulkTransferPacketSize")
+		return n, fmt.Errorf("%d bytes to read is not a multiple of maxBulkTransferPacketSize",
+			bytesToRead)
 	}
 	var data = make([]byte, bytesToRead)
-	if ai.TransferMode == ImmediateTransfer {
+	switch ai.TransferMode {
+	case ImmediateTransfer:
 		for i := 0; i < wordsToRead; i++ {
-			var word = make([]byte, bytesInWord)
-			bytesReceived, err := ai.Read(word)
+			var word = make([]byte, bytesPerWord)
+			bytesReceived, err := ai.DAQ.Read(word)
 			if err != nil {
-				return data, fmt.Errorf("Problem with immediate scan %s", err)
+				return n, fmt.Errorf("immediate scan error: %s", err)
 			}
-			if bytesReceived != bytesInWord {
-				return data, fmt.Errorf("Didn't transfer 2 bytes %s", err)
+			n += bytesReceived
+			if bytesReceived != bytesPerWord {
+				return n, fmt.Errorf("immediate transfer of %d bytes instead of %d: %s",
+					bytesReceived, bytesPerWord, err)
 			}
 			data[i] = word[0]
 			data[i+1] = word[1]
 		}
-	} else if ai.TransferMode == BlockTransfer {
-		bytesReceived, err := ai.Read(data)
+	case BlockTransfer:
+		bytesReceived, err := ai.DAQ.Read(data)
 		if err != nil {
-			return data, fmt.Errorf("Problem with bulk scan %s", err)
+			return n, fmt.Errorf("Problem with bulk scan %s", err)
 		}
+		n += bytesReceived
 		if bytesReceived != bytesToRead {
-			return data, fmt.Errorf("Didn't transfer %d bytes: %s", bytesToRead, err)
+			return n, fmt.Errorf("Didn't transfer %d bytes: %s", bytesToRead, err)
 		}
-	} else {
-		return data, fmt.Errorf("Bad transfer mode")
+	default:
+		return n, fmt.Errorf("bad transfer mode")
 	}
-	status, err := ai.Status()
+	status, err := ai.DAQ.Status()
 	if err != nil {
-		return data, fmt.Errorf("Error getting status during analog bulk read %s", err)
+		return n, fmt.Errorf("error getting status during analog bulk read %s", err)
 	}
 	// If bytesToRead is a multiple of wMaxPacketSize the device will send a zero
 	// byte packet.
 	if (bytesToRead%maxBulkTransferPacketSize) == 0 && (status&byte(scanRunning) == 0) {
-		var data = make([]byte, bytesInWord)
-		_, _ = ai.Read(data)
+		data := make([]byte, bytesPerWord)
+		_, _ = ai.DAQ.Read(data)
 	}
 	if status&byte(scanOverrun) != 0 {
 		log.Printf("Analog AIn scan overrun.\n")
 		ai.StopScan()
 		ai.ClearScanBuffer()
 	}
-
-	return data, err
+	return n, err
 }
 
 // Close stops the analog input scan if running.
@@ -469,7 +324,7 @@ func (ai *AnalogInput) Close() error {
 
 // StopScan stops the USB-1608FS-Plus's analog input scan if running.
 func (ai *AnalogInput) StopScan() error {
-	_, err := ai.SendCommandToDevice(commandAnalogStopScan, nil)
+	_, err := ai.DAQ.SendCommandToDevice(commandAnalogStopScan, nil)
 	if err != nil {
 		return fmt.Errorf("Error stopping analog input scan %s", err)
 	}
@@ -478,7 +333,7 @@ func (ai *AnalogInput) StopScan() error {
 
 // ClearScanBuffer clears the internal scan endpoint FIFO buffer
 func (ai *AnalogInput) ClearScanBuffer() error {
-	_, err := ai.SendCommandToDevice(commandAnalogClearBuffer, nil)
+	_, err := ai.DAQ.SendCommandToDevice(commandAnalogClearBuffer, nil)
 	if err != nil {
 		return fmt.Errorf("Error clearing analog input scan FIFO buffer %s", err)
 	}
@@ -494,7 +349,7 @@ func (ai *AnalogInput) SetScanRanges() error {
 	if len(ranges) != 8 {
 		return fmt.Errorf("length of ranges slice is not 8 bytes")
 	}
-	_, err := ai.SendCommandToDevice(commandAnalogConfig, ranges)
+	_, err := ai.DAQ.SendCommandToDevice(commandAnalogConfig, ranges)
 	if err != nil {
 		return fmt.Errorf("Error writing Ain config %s", err)
 	}
@@ -506,7 +361,7 @@ func (ai *AnalogInput) SetScanRanges() error {
 func (ai *AnalogInput) ScanRanges() ([]byte, error) {
 	const bytesInRange = 8
 	var ranges = make([]byte, bytesInRange)
-	bytesRead, err := ai.ReadCommandFromDevice(commandAnalogConfig, ranges)
+	bytesRead, err := ai.DAQ.ReadCommandFromDevice(commandAnalogConfig, ranges)
 	if err != nil {
 		return ranges, fmt.Errorf("Error reading Ain config: %s", err)
 	}
@@ -563,7 +418,7 @@ func round(f float64) int {
 
 // ReadAnalogInput reads the value of an analog input channel. This command
 // will result in a bus stall if an AInScan is currenty running.
-func (daq *usb1608fsplus) ReadAnalogInput(channel int, rng VoltageRange) (uint, error) {
+func (daq *USB1608fsplus) ReadAnalogInput(channel int, rng VoltageRange) (uint, error) {
 	requestType := libusb.BitmapRequestType(
 		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
 	data := make([]byte, 2)
