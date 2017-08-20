@@ -28,7 +28,8 @@ type DAQer interface {
 	Status() (byte, error)
 }
 
-type usb1608fsplus struct {
+// USB1608fsplus models the USB-1608FS-Plus DAQ.
+type USB1608fsplus struct {
 	Timeout          int
 	Device           *libusb.Device
 	DeviceDescriptor *libusb.DeviceDescriptor
@@ -45,8 +46,8 @@ func Init() (*libusb.Context, error) {
 
 // NewViaSN creates a new daq instance by searching through the list of USB
 // devices for the given serial number.
-func NewViaSN(ctx *libusb.Context, sn string) (*usb1608fsplus, error) {
-	var daq usb1608fsplus
+func NewViaSN(ctx *libusb.Context, sn string) (*USB1608fsplus, error) {
+	var daq USB1608fsplus
 	usbDevices, err := ctx.GetDeviceList()
 	if err != nil {
 		return &daq, fmt.Errorf("Error getting USB device list: %s", err)
@@ -85,8 +86,8 @@ func NewViaSN(ctx *libusb.Context, sn string) (*usb1608fsplus, error) {
 
 // GetFirstDevice creates a new instance of a daq using the first
 // USB-1608FS-Plus found in the USB context.
-func GetFirstDevice(ctx *libusb.Context) (*usb1608fsplus, error) {
-	var daq usb1608fsplus
+func GetFirstDevice(ctx *libusb.Context) (*USB1608fsplus, error) {
+	var daq USB1608fsplus
 	dev, dh, err := ctx.OpenDeviceWithVendorProduct(vendorID, productID)
 	if err != nil {
 		return &daq, fmt.Errorf("error opening the daq, %s", err)
@@ -94,8 +95,8 @@ func GetFirstDevice(ctx *libusb.Context) (*usb1608fsplus, error) {
 	return create(dev, dh)
 }
 
-func create(dev *libusb.Device, dh *libusb.DeviceHandle) (*usb1608fsplus, error) {
-	var daq usb1608fsplus
+func create(dev *libusb.Device, dh *libusb.DeviceHandle) (*USB1608fsplus, error) {
+	var daq USB1608fsplus
 	err := dh.ClaimInterface(0)
 	if err != nil {
 		return &daq, fmt.Errorf("Error claiming the bulk interface %s", err)
@@ -118,8 +119,8 @@ func create(dev *libusb.Device, dh *libusb.DeviceHandle) (*usb1608fsplus, error)
 	return &daq, nil
 }
 
-// Close implements the Closer interface for usb1608fsplus
-func (daq *usb1608fsplus) Close() error {
+// Close implements the Closer interface for USB1608fsplus
+func (daq *USB1608fsplus) Close() error {
 	// Release the interface and close up shop
 	err := daq.DeviceHandle.ReleaseInterface(0)
 	if err != nil {
@@ -136,7 +137,7 @@ func (daq *usb1608fsplus) Close() error {
 }
 
 // Reset resets the device.
-func (daq *usb1608fsplus) Reset() (int, error) {
+func (daq *USB1608fsplus) Reset() (int, error) {
 	requestType := libusb.BitmapRequestType(
 		libusb.HostToDevice, libusb.Vendor, libusb.DeviceRecipient)
 	ret, err := daq.DeviceHandle.ControlTransfer(
@@ -150,7 +151,7 @@ func (daq *usb1608fsplus) Reset() (int, error) {
 // SendCommandToDevice sends the given command and data to the device and
 // returns the number of bytes received and whether or not an error was
 // received.
-func (daq *usb1608fsplus) SendCommandToDevice(cmd command, data []byte) (int, error) {
+func (daq *USB1608fsplus) SendCommandToDevice(cmd command, data []byte) (int, error) {
 	if data == nil {
 		data = []byte{0}
 	}
@@ -164,7 +165,9 @@ func (daq *usb1608fsplus) SendCommandToDevice(cmd command, data []byte) (int, er
 	return bytesReceived, nil
 }
 
-func (daq *usb1608fsplus) ReadCommandFromDevice(cmd command, data []byte) (int, error) {
+// ReadCommandFromDevice sends a command to the DAQ via USB and reads the
+// results of the command.
+func (daq *USB1608fsplus) ReadCommandFromDevice(cmd command, data []byte) (int, error) {
 	if data == nil {
 		data = []byte{0}
 	}
@@ -179,7 +182,7 @@ func (daq *usb1608fsplus) ReadCommandFromDevice(cmd command, data []byte) (int, 
 }
 
 // Read reads the data using a bulk USB transfer.
-func (daq *usb1608fsplus) Read(p []byte) (n int, err error) {
+func (daq *USB1608fsplus) Read(p []byte) (n int, err error) {
 	return daq.DeviceHandle.BulkTransfer(
 		daq.BulkEndpoint.EndpointAddress,
 		p,

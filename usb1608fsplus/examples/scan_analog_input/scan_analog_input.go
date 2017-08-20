@@ -86,21 +86,23 @@ func main() {
 	const (
 		scansPerBuffer = 256
 		totalBuffers   = 10
+		bytesPerWord   = 2
+		numChannels    = 8
 	)
 	expectedDuration := (scansPerBuffer * totalBuffers) / ai.Frequency
 	ai.StartScan(0)
 	start := time.Now()
 	totalBytesRead := 0
 	for j := 0; j < totalBuffers; j++ {
-		// time.Sleep(millisecondDelay * time.Millisecond)
-		data, err := ai.ReadScan(scansPerBuffer)
-		totalBytesRead += len(data)
+		data := make([]byte, scansPerBuffer*bytesPerWord*numChannels)
+		n, err := ai.Read(data)
 		if err != nil {
 			// Stop the analog scan and close the DAQ
 			ai.StopScan()
 			time.Sleep(millisecondDelay * time.Millisecond)
 			log.Fatalf("Error reading scan: %s", err)
 		}
+		totalBytesRead += n
 		// Print the first 8 bytes and the last 8 bytes of each read
 		bytesToShow := 8
 		for i := 0; i < bytesToShow; i += 2 {

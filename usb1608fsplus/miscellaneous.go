@@ -15,7 +15,7 @@ import (
 
 // BlinkLED blinks the LED the given number of times. Note, the LED starts
 // being unlit, but will end being lit.
-func (daq *usb1608fsplus) BlinkLED(blinks int) (int, error) {
+func (daq *USB1608fsplus) BlinkLED(blinks int) (int, error) {
 	requestType := libusb.BitmapRequestType(
 		libusb.HostToDevice, libusb.Vendor, libusb.DeviceRecipient)
 	// data := byteSlice(blinks)
@@ -32,7 +32,7 @@ func (daq *usb1608fsplus) BlinkLED(blinks int) (int, error) {
 
 // Status retrieves the status of the device and clears the error
 // indicators.
-func (daq *usb1608fsplus) Status() (byte, error) {
+func (daq *USB1608fsplus) Status() (byte, error) {
 	requestType := libusb.BitmapRequestType(
 		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
 	data := make([]byte, 2)
@@ -44,7 +44,7 @@ func (daq *usb1608fsplus) Status() (byte, error) {
 
 // SerialNumber retrieves the serial number via a control transfer using the
 // serial command (0x48) as opposed to using the libusb serial number.
-func (daq *usb1608fsplus) SerialNumber() (string, error) {
+func (daq *USB1608fsplus) SerialNumber() (string, error) {
 	requestType := libusb.BitmapRequestType(
 		libusb.DeviceToHost, libusb.Vendor, libusb.DeviceRecipient)
 	data := make([]byte, 8)
@@ -57,7 +57,7 @@ func (daq *usb1608fsplus) SerialNumber() (string, error) {
 // portion of the program memory. The next time the device is reset, it will
 // enumerate in the bootloader and is unusable as a DAQ device until new
 // firmware is loaded.
-func (daq *usb1608fsplus) UpgradeFirmware() error {
+func (daq *USB1608fsplus) UpgradeFirmware() error {
 	requestType := libusb.BitmapRequestType(
 		libusb.HostToDevice, libusb.Vendor, libusb.DeviceRecipient)
 	key := uint16(0xadad)
